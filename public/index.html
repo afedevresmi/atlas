@@ -53,6 +53,11 @@
                 <li><a href="#" data-page="gsmtc" class="nav-link"><i class="fas fa-phone"></i> GSM → TC</a></li>
                 <li><a href="#" data-page="iplookup" class="nav-link"><i class="fas fa-globe"></i> IP Sorgu</a></li>
                 <li><a href="#" data-page="iban" class="nav-link"><i class="fas fa-university"></i> IBAN Sorgu</a></li>
+                <li><a href="#" data-page="phone" class="nav-link"><i class="fas fa-phone"></i> Telefon Analizi</a></li>
+                <li><a href="#" data-page="domain" class="nav-link"><i class="fas fa-globe-americas"></i> Domain Analizi</a></li>
+                <li><a href="#" data-page="bin" class="nav-link"><i class="fas fa-credit-card"></i> Kart BIN Sorgu</a></li>
+                <li><a href="#" data-page="email" class="nav-link"><i class="fas fa-envelope"></i> Email Doğrulama</a></li>
+                <li><a href="#" data-page="plate" class="nav-link"><i class="fas fa-car"></i> Plaka Sorgu</a></li>
                 <li id="adminMenuItem" class="hidden"><a href="#" data-page="admin" class="nav-link"><i class="fas fa-cog"></i> Admin Panel</a></li>
             </ul>
         </nav>
@@ -252,6 +257,131 @@
                     <button onclick="queryIBAN()" class="query-btn"><i class="fas fa-university"></i> IBAN Sorgula</button>
                 </div>
                 <div id="ibanResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- Phone Analysis Page -->
+            <div id="phonePage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Telefon Numarası Analizi</h1>
+                    <p class="page-subtitle">Operatör, bölge ve numara tipi analizi</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="phone-input-section">
+                        <input type="text" id="phoneInput" placeholder="Telefon Numarası (örn: 05321234567)" maxlength="15">
+                        <div class="phone-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExamplePhone('05321234567')" class="example-phone">0532 123 45 67</button>
+                            <button type="button" onclick="setExamplePhone('02121234567')" class="example-phone">0212 123 45 67</button>
+                            <button type="button" onclick="setExamplePhone('05551234567')" class="example-phone">0555 123 45 67</button>
+                        </div>
+                        <div class="phone-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Türk telefon numaralarını analiz eder (GSM ve sabit hat)</span>
+                        </div>
+                    </div>
+                    <button onclick="queryPhone()" class="query-btn"><i class="fas fa-phone"></i> Telefon Analiz Et</button>
+                </div>
+                <div id="phoneResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- Domain Analysis Page -->
+            <div id="domainPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Domain/Website Analizi</h1>
+                    <p class="page-subtitle">WHOIS, DNS, SSL ve güvenlik analizi</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="domain-input-section">
+                        <input type="text" id="domainInput" placeholder="Domain Adı (örn: google.com)" maxlength="100">
+                        <div class="domain-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExampleDomain('google.com')" class="example-domain">google.com</button>
+                            <button type="button" onclick="setExampleDomain('github.com')" class="example-domain">github.com</button>
+                            <button type="button" onclick="setExampleDomain('stackoverflow.com')" class="example-domain">stackoverflow.com</button>
+                        </div>
+                        <div class="domain-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Domain adını http:// veya www. olmadan girin</span>
+                        </div>
+                    </div>
+                    <button onclick="queryDomain()" class="query-btn"><i class="fas fa-globe-americas"></i> Domain Analiz Et</button>
+                </div>
+                <div id="domainResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- BIN Analysis Page -->
+            <div id="binPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Kredi Kartı BIN Analizi</h1>
+                    <p class="page-subtitle">Banka, kart tipi ve ülke bilgisi sorgulama</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="bin-input-section">
+                        <input type="text" id="binInput" placeholder="BIN Numarası (ilk 6-8 rakam)" maxlength="8">
+                        <div class="bin-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExampleBIN('540061')" class="example-bin">540061 (Akbank)</button>
+                            <button type="button" onclick="setExampleBIN('454360')" class="example-bin">454360 (Garanti)</button>
+                            <button type="button" onclick="setExampleBIN('627892')" class="example-bin">627892 (Troy)</button>
+                        </div>
+                        <div class="bin-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Kredi kartının ilk 6-8 rakamını girin (BIN numarası)</span>
+                        </div>
+                    </div>
+                    <button onclick="queryBIN()" class="query-btn"><i class="fas fa-credit-card"></i> BIN Analiz Et</button>
+                </div>
+                <div id="binResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- Email Validation Page -->
+            <div id="emailPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Email Doğrulama</h1>
+                    <p class="page-subtitle">Email format, domain ve güvenlik kontrolü</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="email-input-section">
+                        <input type="email" id="emailInput" placeholder="Email Adresi (örn: user@example.com)" maxlength="100">
+                        <div class="email-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExampleEmail('test@gmail.com')" class="example-email">test@gmail.com</button>
+                            <button type="button" onclick="setExampleEmail('user@company.com')" class="example-email">user@company.com</button>
+                            <button type="button" onclick="setExampleEmail('admin@tempmail.org')" class="example-email">admin@tempmail.org</button>
+                        </div>
+                        <div class="email-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Email adresinin geçerliliği ve güvenliği kontrol edilir</span>
+                        </div>
+                    </div>
+                    <button onclick="queryEmail()" class="query-btn"><i class="fas fa-envelope"></i> Email Doğrula</button>
+                </div>
+                <div id="emailResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- License Plate Page -->
+            <div id="platePage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Plaka Sorgu</h1>
+                    <p class="page-subtitle">İl, bölge ve araç tipi bilgisi</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="plate-input-section">
+                        <input type="text" id="plateInput" placeholder="Plaka (örn: 34ABC123)" maxlength="10">
+                        <div class="plate-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExamplePlate('34ABC123')" class="example-plate">34 ABC 123</button>
+                            <button type="button" onclick="setExamplePlate('06XYZ456')" class="example-plate">06 XYZ 456</button>
+                            <button type="button" onclick="setExamplePlate('35DEF789')" class="example-plate">35 DEF 789</button>
+                        </div>
+                        <div class="plate-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Türk plaka formatında girin (örn: 34ABC123)</span>
+                        </div>
+                    </div>
+                    <button onclick="queryPlate()" class="query-btn"><i class="fas fa-car"></i> Plaka Sorgula</button>
+                </div>
+                <div id="plateResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Admin Panel Page -->

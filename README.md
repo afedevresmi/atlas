@@ -30,7 +30,6 @@ Visit `http://localhost:5000`
 
 ## Default Login
 
-- **Admin:** `admin` / `atlas2024`
 - **User:** `user1` / `user123`
 
 ## Deploy

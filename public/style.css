@@ -1035,6 +1035,326 @@ body {
     gap: 8px;
 }
 
+/* Phone Analysis Styles */
+.phone-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.phone-examples {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.phone-examples span {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.example-phone {
+    padding: 6px 12px;
+    background: rgba(76, 175, 80, 0.1);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+}
+
+.example-phone:hover {
+    background: rgba(76, 175, 80, 0.2);
+    transform: translateY(-1px);
+}
+
+.phone-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background: rgba(76, 175, 80, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #4caf50;
+}
+
+/* Domain Analysis Styles */
+.domain-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.domain-examples {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.domain-examples span {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.example-domain {
+    padding: 6px 12px;
+    background: rgba(156, 39, 176, 0.1);
+    border: 1px solid rgba(156, 39, 176, 0.3);
+    color: #9c27b0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.example-domain:hover {
+    background: rgba(156, 39, 176, 0.2);
+    transform: translateY(-1px);
+}
+
+.domain-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background: rgba(156, 39, 176, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #9c27b0;
+}
+
+/* BIN Analysis Styles */
+.bin-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.bin-examples {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.bin-examples span {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.example-bin {
+    padding: 6px 12px;
+    background: rgba(255, 87, 34, 0.1);
+    border: 1px solid rgba(255, 87, 34, 0.3);
+    color: #ff5722;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+}
+
+.example-bin:hover {
+    background: rgba(255, 87, 34, 0.2);
+    transform: translateY(-1px);
+}
+
+.bin-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background: rgba(255, 87, 34, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #ff5722;
+}
+
+/* Email Validation Styles */
+.email-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.email-examples {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.email-examples span {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.example-email {
+    padding: 6px 12px;
+    background: rgba(33, 150, 243, 0.1);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+    color: #2196f3;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.example-email:hover {
+    background: rgba(33, 150, 243, 0.2);
+    transform: translateY(-1px);
+}
+
+.email-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background: rgba(33, 150, 243, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #2196f3;
+}
+
+/* License Plate Styles */
+.plate-input-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.plate-examples {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.plate-examples span {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.example-plate {
+    padding: 6px 12px;
+    background: rgba(96, 125, 139, 0.1);
+    border: 1px solid rgba(96, 125, 139, 0.3);
+    color: #607d8b;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.example-plate:hover {
+    background: rgba(96, 125, 139, 0.2);
+    transform: translateY(-1px);
+}
+
+.plate-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    background: rgba(96, 125, 139, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid #607d8b;
+}
+
+/* Common Result Styles for New Features */
+.analysis-result-section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(40, 40, 40, 0.6);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-color, #00d4ff);
+}
+
+.analysis-result-section h4 {
+    color: var(--accent-color, #00d4ff);
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.analysis-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.analysis-result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analysis-result-label {
+    color: #ccc;
+    font-weight: 500;
+}
+
+.analysis-result-value {
+    color: #fff;
+    text-align: right;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-valid {
+    background: rgba(0, 255, 136, 0.2);
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+}
+
+.status-invalid {
+    background: rgba(255, 82, 82, 0.2);
+    color: #ff5252;
+    border: 1px solid rgba(255, 82, 82, 0.4);
+}
+
+.status-warning {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.4);
+}
+
+.formatted-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+    color: #00ff88;
+    background: rgba(0, 255, 136, 0.1);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    text-align: center;
+}
+
 .ip-result-value {
     color: #fff;
     font-weight: 600;

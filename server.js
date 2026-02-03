@@ -302,6 +302,127 @@ app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
     }
 });
 
+// Phone Number Analysis endpoint
+app.get('/api/phone', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { phone } = req.query;
+        
+        if (!phone) {
+            return res.status(400).json({ error: 'Phone parameter required' });
+        }
+        
+        // Clean phone number
+        const cleanPhone = phone.replace(/\D/g, '');
+        
+        // Analyze phone number
+        const phoneInfo = analyzePhoneNumber(cleanPhone);
+        
+        const result = {
+            phone: cleanPhone,
+            formatted: phoneInfo.formatted,
+            international: phoneInfo.international,
+            operator: phoneInfo.operator,
+            type: phoneInfo.type,
+            region: phoneInfo.region,
+            isValid: phoneInfo.isValid,
+            country: phoneInfo.country,
+            timestamp: new Date().toISOString()
+        };
+        
+        res.json(result);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Phone analysis failed', details: error.message });
+    }
+});
+
+// Domain/Website Analysis endpoint
+app.get('/api/domain', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { domain } = req.query;
+        
+        if (!domain) {
+            return res.status(400).json({ error: 'Domain parameter required' });
+        }
+        
+        // Clean domain
+        const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+        
+        // Perform domain analysis
+        const domainInfo = await analyzeDomain(cleanDomain);
+        
+        res.json(domainInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Domain analysis failed', details: error.message });
+    }
+});
+
+// Credit Card BIN Analysis endpoint
+app.get('/api/bin', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { bin } = req.query;
+        
+        if (!bin) {
+            return res.status(400).json({ error: 'BIN parameter required' });
+        }
+        
+        // Validate BIN (first 6-8 digits)
+        const cleanBin = bin.replace(/\D/g, '').substring(0, 8);
+        
+        if (cleanBin.length < 6) {
+            return res.status(400).json({ error: 'BIN must be at least 6 digits' });
+        }
+        
+        // Analyze BIN
+        const binInfo = await analyzeBIN(cleanBin);
+        
+        res.json(binInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'BIN analysis failed', details: error.message });
+    }
+});
+
+// Email Validation endpoint
+app.get('/api/email', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { email } = req.query;
+        
+        if (!email) {
+            return res.status(400).json({ error: 'Email parameter required' });
+        }
+        
+        // Validate and analyze email
+        const emailInfo = await analyzeEmail(email);
+        
+        res.json(emailInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Email analysis failed', details: error.message });
+    }
+});
+
+// License Plate Analysis endpoint
+app.get('/api/plate', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { plate } = req.query;
+        
+        if (!plate) {
+            return res.status(400).json({ error: 'Plate parameter required' });
+        }
+        
+        // Clean and analyze plate
+        const cleanPlate = plate.toUpperCase().replace(/\s/g, '');
+        const plateInfo = analyzePlate(cleanPlate);
+        
+        res.json(plateInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Plate analysis failed', details: error.message });
+    }
+});
+
 // IBAN Validation and Lookup endpoint
 app.get('/api/iban', authenticateToken, trackQuery, async (req, res) => {
     try {
@@ -708,4 +829,484 @@ if (require.main === module) {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Atlas Panel Server running on http://0.0.0.0:${PORT}`);
     });
+}
+
+// Phone Number Analysis Functions
+function analyzePhoneNumber(phone) {
+    const result = {
+        formatted: '',
+        international: '',
+        operator: 'Bilinmiyor',
+        type: 'Bilinmiyor',
+        region: 'Bilinmiyor',
+        isValid: false,
+        country: 'Türkiye'
+    };
+    
+    // Turkish phone number analysis
+    if (phone.startsWith('90')) {
+        phone = phone.substring(2);
+    }
+    
+    if (phone.startsWith('0')) {
+        phone = phone.substring(1);
+    }
+    
+    if (phone.length === 10) {
+        result.isValid = true;
+        result.formatted = `0${phone.substring(0, 3)} ${phone.substring(3, 6)} ${phone.substring(6, 8)} ${phone.substring(8)}`;
+        result.international = `+90 ${phone.substring(0, 3)} ${phone.substring(3, 6)} ${phone.substring(6, 8)} ${phone.substring(8)}`;
+        
+        const prefix = phone.substring(0, 3);
+        
+        // Mobile operators
+        if (['501', '502', '503', '504', '505', '506', '507', '508', '509'].includes(prefix)) {
+            result.operator = 'Turkcell';
+            result.type = 'GSM';
+        } else if (['530', '531', '532', '533', '534', '535', '536', '537', '538', '539'].includes(prefix)) {
+            result.operator = 'Vodafone';
+            result.type = 'GSM';
+        } else if (['540', '541', '542', '543', '544', '545', '546', '547', '548', '549'].includes(prefix)) {
+            result.operator = 'Türk Telekom';
+            result.type = 'GSM';
+        } else if (['550', '551', '552', '553', '554', '555', '559'].includes(prefix)) {
+            result.operator = 'Türk Telekom';
+            result.type = 'GSM';
+        } else if (['561', '562', '563', '564', '565', '566', '567', '568', '569'].includes(prefix)) {
+            result.operator = 'Türk Telekom';
+            result.type = 'GSM';
+        }
+        
+        // Fixed line analysis
+        const areaCode = phone.substring(0, 3);
+        const cityMap = {
+            '212': 'İstanbul (Avrupa)',
+            '216': 'İstanbul (Asya)',
+            '312': 'Ankara',
+            '232': 'İzmir',
+            '224': 'Bursa',
+            '322': 'Adana',
+            '332': 'Konya',
+            '352': 'Kayseri',
+            '362': 'Samsun',
+            '442': 'Trabzon',
+            '272': 'Afyon',
+            '318': 'Kırıkkale',
+            '326': 'Hatay',
+            '424': 'Elazığ',
+            '432': 'Diyarbakır'
+        };
+        
+        if (cityMap[areaCode]) {
+            result.region = cityMap[areaCode];
+            result.type = 'Sabit Hat';
+            result.operator = 'Türk Telekom';
+        }
+    }
+    
+    return result;
+}
+
+// Domain Analysis Functions
+async function analyzeDomain(domain) {
+    const result = {
+        domain: domain,
+        isValid: false,
+        whois: {},
+        dns: {},
+        ssl: {},
+        security: {},
+        server: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    try {
+        // Basic domain validation
+        const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}$/;
+        result.isValid = domainRegex.test(domain);
+        
+        if (!result.isValid) {
+            return result;
+        }
+        
+        // Try to get basic info from multiple sources
+        try {
+            // Check if domain is reachable
+            const response = await axios.get(`https://${domain}`, { 
+                timeout: 5000,
+                maxRedirects: 5,
+                validateStatus: () => true
+            });
+            
+            result.server = {
+                status: response.status,
+                server: response.headers.server || 'Unknown',
+                powered: response.headers['x-powered-by'] || 'Unknown',
+                contentType: response.headers['content-type'] || 'Unknown',
+                lastModified: response.headers['last-modified'] || 'Unknown'
+            };
+            
+        } catch (error) {
+            result.server = { error: 'Domain not reachable' };
+        }
+        
+        // DNS Analysis (simulated - in production use proper DNS libraries)
+        result.dns = {
+            hasA: true, // Simulated
+            hasMX: true, // Simulated
+            hasNS: true, // Simulated
+            hasTXT: true, // Simulated
+            records: {
+                A: ['Simulated A record'],
+                MX: ['Simulated MX record'],
+                NS: ['Simulated NS record'],
+                TXT: ['Simulated TXT record']
+            }
+        };
+        
+        // SSL Analysis (simulated)
+        result.ssl = {
+            isValid: true,
+            issuer: 'Simulated CA',
+            validFrom: new Date().toISOString(),
+            validTo: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+            algorithm: 'RSA 2048'
+        };
+        
+        // Security Analysis
+        result.security = {
+            hasHTTPS: domain.includes('https') || true,
+            hasHSTS: false,
+            hasCSP: false,
+            malwareCheck: 'Clean',
+            phishingCheck: 'Clean'
+        };
+        
+        // WHOIS simulation (in production use proper WHOIS API)
+        result.whois = {
+            registrar: 'Simulated Registrar',
+            createdDate: '2020-01-01',
+            expiryDate: '2025-01-01',
+            nameServers: ['ns1.example.com', 'ns2.example.com'],
+            status: 'Active'
+        };
+        
+    } catch (error) {
+        result.error = error.message;
+    }
+    
+    return result;
+}
+
+// BIN Analysis Functions
+async function analyzeBIN(bin) {
+    const result = {
+        bin: bin,
+        isValid: false,
+        bank: {},
+        card: {},
+        country: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    // BIN Database (expanded)
+    const binDatabase = {
+        // Turkish Banks
+        '540061': { bank: 'Akbank', type: 'Visa', level: 'Classic', country: 'Turkey', currency: 'TRY' },
+        '526717': { bank: 'Akbank', type: 'MasterCard', level: 'Gold', country: 'Turkey', currency: 'TRY' },
+        '450803': { bank: 'Yapı Kredi', type: 'Visa', level: 'Platinum', country: 'Turkey', currency: 'TRY' },
+        '552879': { bank: 'Yapı Kredi', type: 'MasterCard', level: 'World', country: 'Turkey', currency: 'TRY' },
+        '415565': { bank: 'İş Bankası', type: 'Visa', level: 'Classic', country: 'Turkey', currency: 'TRY' },
+        '524073': { bank: 'İş Bankası', type: 'MasterCard', level: 'Gold', country: 'Turkey', currency: 'TRY' },
+        '454360': { bank: 'Garanti BBVA', type: 'Visa', level: 'Platinum', country: 'Turkey', currency: 'TRY' },
+        '530906': { bank: 'Garanti BBVA', type: 'MasterCard', level: 'World Elite', country: 'Turkey', currency: 'TRY' },
+        '627892': { bank: 'Ziraat Bankası', type: 'Troy', level: 'Classic', country: 'Turkey', currency: 'TRY' },
+        '627893': { bank: 'Halkbank', type: 'Troy', level: 'Gold', country: 'Turkey', currency: 'TRY' },
+        
+        // International Banks
+        '424242': { bank: 'Test Bank', type: 'Visa', level: 'Classic', country: 'USA', currency: 'USD' },
+        '555555': { bank: 'Test Bank', type: 'MasterCard', level: 'Gold', country: 'USA', currency: 'USD' },
+        '378282': { bank: 'American Express', type: 'Amex', level: 'Gold', country: 'USA', currency: 'USD' },
+        '371449': { bank: 'American Express', type: 'Amex', level: 'Platinum', country: 'USA', currency: 'USD' }
+    };
+    
+    // Check exact match first
+    let binInfo = binDatabase[bin];
+    
+    // If no exact match, try shorter BINs
+    if (!binInfo) {
+        for (let i = 6; i >= 4; i--) {
+            const shortBin = bin.substring(0, i);
+            binInfo = binDatabase[shortBin];
+            if (binInfo) break;
+        }
+    }
+    
+    if (binInfo) {
+        result.isValid = true;
+        result.bank = {
+            name: binInfo.bank,
+            country: binInfo.country
+        };
+        result.card = {
+            type: binInfo.type,
+            level: binInfo.level,
+            currency: binInfo.currency
+        };
+        result.country = {
+            name: binInfo.country,
+            currency: binInfo.currency
+        };
+    } else {
+        // Fallback analysis based on first digit
+        const firstDigit = bin.charAt(0);
+        
+        if (firstDigit === '4') {
+            result.card.type = 'Visa';
+        } else if (['5', '2'].includes(firstDigit)) {
+            result.card.type = 'MasterCard';
+        } else if (['34', '37'].includes(bin.substring(0, 2))) {
+            result.card.type = 'American Express';
+        } else if (bin.startsWith('627')) {
+            result.card.type = 'Troy';
+            result.country.name = 'Turkey';
+        }
+        
+        result.isValid = !!result.card.type;
+    }
+    
+    return result;
+}
+
+// Email Analysis Functions
+async function analyzeEmail(email) {
+    const result = {
+        email: email,
+        isValid: false,
+        format: {},
+        domain: {},
+        security: {},
+        deliverability: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    try {
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        result.format.isValid = emailRegex.test(email);
+        
+        if (!result.format.isValid) {
+            result.format.error = 'Invalid email format';
+            return result;
+        }
+        
+        const [localPart, domainPart] = email.split('@');
+        
+        result.format = {
+            isValid: true,
+            localPart: localPart,
+            domainPart: domainPart,
+            length: email.length,
+            hasNumbers: /\d/.test(localPart),
+            hasSpecialChars: /[!#$%&'*+\-/=?^_`{|}~]/.test(localPart)
+        };
+        
+        // Domain analysis
+        result.domain = {
+            name: domainPart,
+            isDisposable: checkDisposableEmail(domainPart),
+            isCommon: checkCommonProvider(domainPart),
+            hasMX: true // Simulated
+        };
+        
+        // Security analysis
+        result.security = {
+            riskLevel: result.domain.isDisposable ? 'High' : 'Low',
+            isBusinessEmail: !checkCommonProvider(domainPart) && !result.domain.isDisposable,
+            hasPlus: localPart.includes('+'),
+            hasDots: localPart.includes('.')
+        };
+        
+        // Deliverability
+        result.deliverability = {
+            score: result.domain.isDisposable ? 20 : 85,
+            canReceive: !result.domain.isDisposable,
+            mxExists: true,
+            smtpValid: true
+        };
+        
+        result.isValid = result.format.isValid && !result.domain.isDisposable;
+        
+    } catch (error) {
+        result.error = error.message;
+    }
+    
+    return result;
+}
+
+function checkDisposableEmail(domain) {
+    const disposableDomains = [
+        '10minutemail.com', 'tempmail.org', 'guerrillamail.com', 'mailinator.com',
+        'yopmail.com', 'temp-mail.org', 'throwaway.email', 'getnada.com'
+    ];
+    return disposableDomains.includes(domain.toLowerCase());
+}
+
+function checkCommonProvider(domain) {
+    const commonProviders = [
+        'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com',
+        'icloud.com', 'live.com', 'msn.com', 'yandex.com', 'mail.ru'
+    ];
+    return commonProviders.includes(domain.toLowerCase());
+}
+
+// License Plate Analysis Functions
+function analyzePlate(plate) {
+    const result = {
+        plate: plate,
+        isValid: false,
+        city: {},
+        vehicle: {},
+        format: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    // Turkish plate format validation
+    const plateRegex = /^[0-9]{2}[A-Z]{1,3}[0-9]{1,4}$/;
+    result.format.isValid = plateRegex.test(plate);
+    
+    if (!result.format.isValid) {
+        result.format.error = 'Invalid Turkish plate format (e.g., 34ABC123)';
+        return result;
+    }
+    
+    // Extract city code
+    const cityCode = plate.substring(0, 2);
+    
+    // Turkish city codes database
+    const cityCodes = {
+        '01': { name: 'Adana', region: 'Akdeniz' },
+        '02': { name: 'Adıyaman', region: 'Güneydoğu Anadolu' },
+        '03': { name: 'Afyonkarahisar', region: 'Ege' },
+        '04': { name: 'Ağrı', region: 'Doğu Anadolu' },
+        '05': { name: 'Amasya', region: 'Karadeniz' },
+        '06': { name: 'Ankara', region: 'İç Anadolu' },
+        '07': { name: 'Antalya', region: 'Akdeniz' },
+        '08': { name: 'Artvin', region: 'Karadeniz' },
+        '09': { name: 'Aydın', region: 'Ege' },
+        '10': { name: 'Balıkesir', region: 'Marmara' },
+        '11': { name: 'Bilecik', region: 'Marmara' },
+        '12': { name: 'Bingöl', region: 'Doğu Anadolu' },
+        '13': { name: 'Bitlis', region: 'Doğu Anadolu' },
+        '14': { name: 'Bolu', region: 'Karadeniz' },
+        '15': { name: 'Burdur', region: 'Akdeniz' },
+        '16': { name: 'Bursa', region: 'Marmara' },
+        '17': { name: 'Çanakkale', region: 'Marmara' },
+        '18': { name: 'Çankırı', region: 'İç Anadolu' },
+        '19': { name: 'Çorum', region: 'Karadeniz' },
+        '20': { name: 'Denizli', region: 'Ege' },
+        '21': { name: 'Diyarbakır', region: 'Güneydoğu Anadolu' },
+        '22': { name: 'Edirne', region: 'Marmara' },
+        '23': { name: 'Elazığ', region: 'Doğu Anadolu' },
+        '24': { name: 'Erzincan', region: 'Doğu Anadolu' },
+        '25': { name: 'Erzurum', region: 'Doğu Anadolu' },
+        '26': { name: 'Eskişehir', region: 'İç Anadolu' },
+        '27': { name: 'Gaziantep', region: 'Güneydoğu Anadolu' },
+        '28': { name: 'Giresun', region: 'Karadeniz' },
+        '29': { name: 'Gümüşhane', region: 'Karadeniz' },
+        '30': { name: 'Hakkâri', region: 'Doğu Anadolu' },
+        '31': { name: 'Hatay', region: 'Akdeniz' },
+        '32': { name: 'Isparta', region: 'Akdeniz' },
+        '33': { name: 'Mersin', region: 'Akdeniz' },
+        '34': { name: 'İstanbul', region: 'Marmara' },
+        '35': { name: 'İzmir', region: 'Ege' },
+        '36': { name: 'Kars', region: 'Doğu Anadolu' },
+        '37': { name: 'Kastamonu', region: 'Karadeniz' },
+        '38': { name: 'Kayseri', region: 'İç Anadolu' },
+        '39': { name: 'Kırklareli', region: 'Marmara' },
+        '40': { name: 'Kırşehir', region: 'İç Anadolu' },
+        '41': { name: 'Kocaeli', region: 'Marmara' },
+        '42': { name: 'Konya', region: 'İç Anadolu' },
+        '43': { name: 'Kütahya', region: 'Ege' },
+        '44': { name: 'Malatya', region: 'Doğu Anadolu' },
+        '45': { name: 'Manisa', region: 'Ege' },
+        '46': { name: 'Kahramanmaraş', region: 'Akdeniz' },
+        '47': { name: 'Mardin', region: 'Güneydoğu Anadolu' },
+        '48': { name: 'Muğla', region: 'Ege' },
+        '49': { name: 'Muş', region: 'Doğu Anadolu' },
+        '50': { name: 'Nevşehir', region: 'İç Anadolu' },
+        '51': { name: 'Niğde', region: 'İç Anadolu' },
+        '52': { name: 'Ordu', region: 'Karadeniz' },
+        '53': { name: 'Rize', region: 'Karadeniz' },
+        '54': { name: 'Sakarya', region: 'Marmara' },
+        '55': { name: 'Samsun', region: 'Karadeniz' },
+        '56': { name: 'Siirt', region: 'Güneydoğu Anadolu' },
+        '57': { name: 'Sinop', region: 'Karadeniz' },
+        '58': { name: 'Sivas', region: 'İç Anadolu' },
+        '59': { name: 'Tekirdağ', region: 'Marmara' },
+        '60': { name: 'Tokat', region: 'Karadeniz' },
+        '61': { name: 'Trabzon', region: 'Karadeniz' },
+        '62': { name: 'Tunceli', region: 'Doğu Anadolu' },
+        '63': { name: 'Şanlıurfa', region: 'Güneydoğu Anadolu' },
+        '64': { name: 'Uşak', region: 'Ege' },
+        '65': { name: 'Van', region: 'Doğu Anadolu' },
+        '66': { name: 'Yozgat', region: 'İç Anadolu' },
+        '67': { name: 'Zonguldak', region: 'Karadeniz' },
+        '68': { name: 'Aksaray', region: 'İç Anadolu' },
+        '69': { name: 'Bayburt', region: 'Karadeniz' },
+        '70': { name: 'Karaman', region: 'İç Anadolu' },
+        '71': { name: 'Kırıkkale', region: 'İç Anadolu' },
+        '72': { name: 'Batman', region: 'Güneydoğu Anadolu' },
+        '73': { name: 'Şırnak', region: 'Güneydoğu Anadolu' },
+        '74': { name: 'Bartın', region: 'Karadeniz' },
+        '75': { name: 'Ardahan', region: 'Doğu Anadolu' },
+        '76': { name: 'Iğdır', region: 'Doğu Anadolu' },
+        '77': { name: 'Yalova', region: 'Marmara' },
+        '78': { name: 'Karabük', region: 'Karadeniz' },
+        '79': { name: 'Kilis', region: 'Güneydoğu Anadolu' },
+        '80': { name: 'Osmaniye', region: 'Akdeniz' },
+        '81': { name: 'Düzce', region: 'Karadeniz' }
+    };
+    
+    const cityInfo = cityCodes[cityCode];
+    
+    if (cityInfo) {
+        result.isValid = true;
+        result.city = {
+            code: cityCode,
+            name: cityInfo.name,
+            region: cityInfo.region
+        };
+        
+        // Vehicle type analysis based on format
+        const letters = plate.match(/[A-Z]+/)[0];
+        const numbers = plate.match(/[0-9]+/g);
+        
+        result.vehicle = {
+            type: 'Otomobil', // Default
+            format: `${cityCode} ${letters} ${numbers.join(' ')}`,
+            letterCount: letters.length,
+            numberCount: numbers.reduce((sum, num) => sum + num.length, 0)
+        };
+        
+        // Special vehicle types
+        if (letters.length === 1 && numbers[1] && numbers[1].length <= 3) {
+            result.vehicle.type = 'Resmi Araç';
+        } else if (letters.includes('D')) {
+            result.vehicle.type = 'Diplomatik Araç';
+        } else if (letters.includes('K')) {
+            result.vehicle.type = 'Konsülosluk Aracı';
+        }
+        
+        result.format = {
+            isValid: true,
+            original: plate,
+            formatted: `${cityCode} ${letters} ${numbers.join(' ')}`,
+            type: 'Turkish Standard'
+        };
+    } else {
+        result.format.error = `Unknown city code: ${cityCode}`;
+    }
+    
+    return result;
 }

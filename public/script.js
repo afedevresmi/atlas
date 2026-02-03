@@ -1122,3 +1122,493 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Phone Analysis Functions
+async function queryPhone() {
+    const phone = document.getElementById('phoneInput').value.trim();
+    
+    if (!phone) {
+        showToast('Telefon numarası girin!', 'error');
+        return;
+    }
+    
+    showLoading('phoneResults');
+    
+    const data = await makeApiRequest('phone', { phone });
+    if (data) {
+        displayPhoneResults('phoneResults', data);
+        showToast('Telefon analizi tamamlandı!', 'success');
+    }
+}
+
+function setExamplePhone(phone) {
+    document.getElementById('phoneInput').value = phone;
+}
+
+function displayPhoneResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Telefon Analizi Başarısız</h3>
+                <p>${data?.details || 'Telefon numarası analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #4caf50;">
+            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli Numara' : 'Geçersiz Numara'}
+                </span>
+            </div>
+            ${data.formatted ? `<div class="formatted-display">${data.formatted}</div>` : ''}
+        </div>
+    `;
+    
+    if (data.isValid) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #4caf50;">
+                <h4><i class="fas fa-info-circle"></i> Numara Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Orijinal Numara', data.phone)}
+                    ${createAnalysisResultItem('Formatlanmış', data.formatted)}
+                    ${createAnalysisResultItem('Uluslararası', data.international)}
+                    ${createAnalysisResultItem('Ülke', data.country)}
+                </div>
+            </div>
+            
+            <div class="analysis-result-section" style="--accent-color: #4caf50;">
+                <h4><i class="fas fa-mobile-alt"></i> Operatör ve Tip</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Operatör', data.operator)}
+                    ${createAnalysisResultItem('Numara Tipi', data.type)}
+                    ${createAnalysisResultItem('Bölge/Şehir', data.region)}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Phone Analysis');
+}
+
+// Domain Analysis Functions
+async function queryDomain() {
+    const domain = document.getElementById('domainInput').value.trim();
+    
+    if (!domain) {
+        showToast('Domain adı girin!', 'error');
+        return;
+    }
+    
+    showLoading('domainResults');
+    
+    const data = await makeApiRequest('domain', { domain });
+    if (data) {
+        displayDomainResults('domainResults', data);
+        showToast('Domain analizi tamamlandı!', 'success');
+    }
+}
+
+function setExampleDomain(domain) {
+    document.getElementById('domainInput').value = domain;
+}
+
+function displayDomainResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Domain Analizi Başarısız</h3>
+                <p>${data?.details || 'Domain analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #9c27b0;">
+            <h4><i class="fas fa-globe-americas"></i> Domain Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli Domain' : 'Geçersiz Domain'}
+                </span>
+            </div>
+            <div class="formatted-display">${data.domain}</div>
+        </div>
+    `;
+    
+    if (data.server && !data.server.error) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
+                <h4><i class="fas fa-server"></i> Sunucu Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('HTTP Durumu', data.server.status)}
+                    ${createAnalysisResultItem('Sunucu', data.server.server)}
+                    ${createAnalysisResultItem('Teknoloji', data.server.powered)}
+                    ${createAnalysisResultItem('İçerik Tipi', data.server.contentType)}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.ssl) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
+                <h4><i class="fas fa-lock"></i> SSL Sertifikası</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('SSL Durumu', data.ssl.isValid ? 'Geçerli' : 'Geçersiz')}
+                    ${createAnalysisResultItem('Sertifika Otoritesi', data.ssl.issuer)}
+                    ${createAnalysisResultItem('Algoritma', data.ssl.algorithm)}
+                    ${createAnalysisResultItem('Geçerlilik', new Date(data.ssl.validTo).toLocaleDateString('tr-TR'))}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.security) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
+                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('HTTPS', data.security.hasHTTPS ? 'Var' : 'Yok')}
+                    ${createAnalysisResultItem('HSTS', data.security.hasHSTS ? 'Var' : 'Yok')}
+                    ${createAnalysisResultItem('Malware Kontrolü', data.security.malwareCheck)}
+                    ${createAnalysisResultItem('Phishing Kontrolü', data.security.phishingCheck)}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Domain Analysis');
+}
+
+// BIN Analysis Functions
+async function queryBIN() {
+    const bin = document.getElementById('binInput').value.trim();
+    
+    if (!bin) {
+        showToast('BIN numarası girin!', 'error');
+        return;
+    }
+    
+    if (bin.length < 6) {
+        showToast('BIN numarası en az 6 rakam olmalıdır!', 'error');
+        return;
+    }
+    
+    showLoading('binResults');
+    
+    const data = await makeApiRequest('bin', { bin });
+    if (data) {
+        displayBINResults('binResults', data);
+        showToast('BIN analizi tamamlandı!', 'success');
+    }
+}
+
+function setExampleBIN(bin) {
+    document.getElementById('binInput').value = bin;
+}
+
+function displayBINResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>BIN Analizi Başarısız</h3>
+                <p>${data?.details || 'BIN numarası analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #ff5722;">
+            <h4><i class="fas fa-credit-card"></i> BIN Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli BIN' : 'Geçersiz BIN'}
+                </span>
+            </div>
+            <div class="formatted-display">${data.bin}</div>
+        </div>
+    `;
+    
+    if (data.isValid) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #ff5722;">
+                <h4><i class="fas fa-university"></i> Banka Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Banka Adı', data.bank.name || 'Bilinmiyor')}
+                    ${createAnalysisResultItem('Ülke', data.bank.country || 'Bilinmiyor')}
+                </div>
+            </div>
+            
+            <div class="analysis-result-section" style="--accent-color: #ff5722;">
+                <h4><i class="fas fa-credit-card"></i> Kart Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Kart Tipi', data.card.type || 'Bilinmiyor')}
+                    ${createAnalysisResultItem('Kart Seviyesi', data.card.level || 'Bilinmiyor')}
+                    ${createAnalysisResultItem('Para Birimi', data.card.currency || 'Bilinmiyor')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'BIN Analysis');
+}
+
+// Email Validation Functions
+async function queryEmail() {
+    const email = document.getElementById('emailInput').value.trim();
+    
+    if (!email) {
+        showToast('Email adresi girin!', 'error');
+        return;
+    }
+    
+    showLoading('emailResults');
+    
+    const data = await makeApiRequest('email', { email });
+    if (data) {
+        displayEmailResults('emailResults', data);
+        showToast('Email doğrulaması tamamlandı!', 'success');
+    }
+}
+
+function setExampleEmail(email) {
+    document.getElementById('emailInput').value = email;
+}
+
+function displayEmailResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Email Doğrulaması Başarısız</h3>
+                <p>${data?.details || 'Email adresi doğrulanamadı.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #2196f3;">
+            <h4><i class="fas fa-envelope"></i> Email Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli Email' : 'Geçersiz Email'}
+                </span>
+            </div>
+            <div class="formatted-display">${data.email}</div>
+        </div>
+    `;
+    
+    if (data.format) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #2196f3;">
+                <h4><i class="fas fa-info-circle"></i> Format Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Kullanıcı Adı', data.format.localPart)}
+                    ${createAnalysisResultItem('Domain', data.format.domainPart)}
+                    ${createAnalysisResultItem('Uzunluk', data.format.length)}
+                    ${createAnalysisResultItem('Rakam İçeriyor', data.format.hasNumbers ? 'Evet' : 'Hayır')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.domain) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #2196f3;">
+                <h4><i class="fas fa-globe"></i> Domain Analizi</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Domain Adı', data.domain.name)}
+                    ${createAnalysisResultItem('Geçici Email', data.domain.isDisposable ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Yaygın Sağlayıcı', data.domain.isCommon ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('MX Kaydı', data.domain.hasMX ? 'Var' : 'Yok')}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.security) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #2196f3;">
+                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Risk Seviyesi', data.security.riskLevel)}
+                    ${createAnalysisResultItem('İş Emaili', data.security.isBusinessEmail ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Teslim Edilebilirlik', data.deliverability?.score + '%')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Email Validation');
+}
+
+// License Plate Functions
+async function queryPlate() {
+    const plate = document.getElementById('plateInput').value.trim();
+    
+    if (!plate) {
+        showToast('Plaka numarası girin!', 'error');
+        return;
+    }
+    
+    showLoading('plateResults');
+    
+    const data = await makeApiRequest('plate', { plate });
+    if (data) {
+        displayPlateResults('plateResults', data);
+        showToast('Plaka sorgusu tamamlandı!', 'success');
+    }
+}
+
+function setExamplePlate(plate) {
+    document.getElementById('plateInput').value = plate;
+}
+
+function displayPlateResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Plaka Sorgusu Başarısız</h3>
+                <p>${data?.details || 'Plaka numarası sorgulanamadı.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #607d8b;">
+            <h4><i class="fas fa-car"></i> Plaka Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli Plaka' : 'Geçersiz Plaka'}
+                </span>
+            </div>
+            ${data.format?.formatted ? `<div class="formatted-display">${data.format.formatted}</div>` : ''}
+        </div>
+    `;
+    
+    if (data.isValid && data.city) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #607d8b;">
+                <h4><i class="fas fa-map-marker-alt"></i> Şehir Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Şehir Kodu', data.city.code)}
+                    ${createAnalysisResultItem('Şehir Adı', data.city.name)}
+                    ${createAnalysisResultItem('Bölge', data.city.region)}
+                </div>
+            </div>
+            
+            <div class="analysis-result-section" style="--accent-color: #607d8b;">
+                <h4><i class="fas fa-car"></i> Araç Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Araç Tipi', data.vehicle.type)}
+                    ${createAnalysisResultItem('Plaka Formatı', data.vehicle.format)}
+                    ${createAnalysisResultItem('Harf Sayısı', data.vehicle.letterCount)}
+                    ${createAnalysisResultItem('Rakam Sayısı', data.vehicle.numberCount)}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'License Plate');
+}
+
+// Helper function for creating analysis result items
+function createAnalysisResultItem(label, value) {
+    if (!value || value === 'null' || value === 'undefined' || value === 'Bilinmiyor') {
+        if (value === 'Bilinmiyor') {
+            return `
+                <div class="analysis-result-item">
+                    <span class="analysis-result-label">${label}:</span>
+                    <span class="analysis-result-value" style="color: #888; font-style: italic;">${value}</span>
+                </div>
+            `;
+        }
+        return '';
+    }
+    
+    return `
+        <div class="analysis-result-item">
+            <span class="analysis-result-label">${label}:</span>
+            <span class="analysis-result-value">${value}</span>
+        </div>
+    `;
+}
+
+// Input formatting for new fields
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone input formatting
+    const phoneInput = document.getElementById('phoneInput');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                if (value.startsWith('0')) {
+                    value = value.substring(0, 11);
+                    if (value.length > 3) {
+                        value = value.substring(0, 4) + ' ' + value.substring(4);
+                    }
+                    if (value.length > 8) {
+                        value = value.substring(0, 8) + ' ' + value.substring(8);
+                    }
+                    if (value.length > 11) {
+                        value = value.substring(0, 11) + ' ' + value.substring(11);
+                    }
+                }
+                e.target.value = value;
+            }
+        });
+    }
+    
+    // BIN input formatting
+    const binInput = document.getElementById('binInput');
+    if (binInput) {
+        binInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 8) {
+                e.target.value = value;
+            }
+        });
+    }
+    
+    // Plate input formatting
+    const plateInput = document.getElementById('plateInput');
+    if (plateInput) {
+        plateInput.addEventListener('input', function(e) {
+            let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (value.length <= 8) {
+                e.target.value = value;
+            }
+        });
+    }
+});
