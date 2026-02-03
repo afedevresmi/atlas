@@ -458,8 +458,8 @@ async function queryGsmTc() {
     }
 }
 
-// IP Lookup Functions
-async function queryIPLookup() {
+// Enhanced IP Lookup Functions
+async function queryEnhancedIP() {
     const ip = document.getElementById('ipInput').value.trim();
     
     if (!ip) {
@@ -467,20 +467,593 @@ async function queryIPLookup() {
         return;
     }
     
-    // Validate IP format
-    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    if (!ipRegex.test(ip)) {
-        showToast('Geçerli bir IP adresi girin! (örn: 192.168.1.1)', 'error');
+    // Enhanced IP validation (IPv4 and IPv6)
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+    
+    if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
+        showToast('Geçerli bir IP adresi girin! (IPv4 veya IPv6)', 'error');
         return;
     }
     
-    showLoading('iplookupResults');
+    showEnhancedLoading('iplookupResults', 'IP Analizi');
     
     const data = await makeApiRequest('iplookup', { ip });
     if (data) {
-        displayIPResults('iplookupResults', data);
-        showToast('IP sorgusu tamamlandı!', 'success');
+        displayEnhancedIPResults('iplookupResults', data);
+        showToast('Gelişmiş IP analizi tamamlandı!', 'success');
     }
+}
+
+async function queryEnhancedIBAN() {
+    const iban = document.getElementById('ibanInput').value.trim();
+    
+    if (!iban) {
+        showToast('IBAN numarası girin!', 'error');
+        return;
+    }
+    
+    // Clean IBAN (remove spaces)
+    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+    
+    // Enhanced IBAN format validation
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
+        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
+        return;
+    }
+    
+    if (cleanIban.length < 15 || cleanIban.length > 34) {
+        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
+        return;
+    }
+    
+    showEnhancedLoading('ibanResults', 'IBAN Analizi');
+    
+    const data = await makeApiRequest('iban', { iban: cleanIban });
+    if (data) {
+        displayEnhancedIBANResults('ibanResults', data);
+        showToast('Gelişmiş IBAN analizi tamamlandı!', 'success');
+    }
+}
+
+function showEnhancedLoading(containerId, type) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = `
+        <div class="enhanced-loading">
+            <div class="loading-animation">
+                <div class="loading-circle"></div>
+                <div class="loading-circle"></div>
+                <div class="loading-circle"></div>
+            </div>
+            <div class="loading-text">
+                <h3>${type} Yapılıyor...</h3>
+                <p>15+ API'den veri toplanıyor ve analiz ediliyor</p>
+                <div class="loading-progress">
+                    <div class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Animate progress bar
+    setTimeout(() => {
+        const progressBar = container.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = '100%';
+        }
+    }, 100);
+}
+
+function displayEnhancedIPResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Gelişmiş IP Analizi Başarısız</h3>
+                <p>${data?.details || 'IP adresi analiz edilemedi veya geçersiz.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="enhanced-sources-info">
+            <h5><i class="fas fa-database"></i> Veri Kaynakları ve Güvenilirlik</h5>
+            <div class="sources-stats">
+                <span>Başarılı API: ${data.sources}/${data.totalSources}</span>
+                <div class="reliability-score reliability-${getReliabilityClass(data.reliability)}">
+                    <i class="fas fa-shield-alt"></i>
+                    Güvenilirlik: %${data.reliability}
+                </div>
+            </div>
+            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
+        </div>
+    `;
+    
+    // Enhanced Basic Information
+    if (data.data.basic) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-info-circle"></i> Temel Bilgiler</h4>
+                <div class="ip-result-grid">
+                    ${createEnhancedIPResultItem('IP Adresi', data.data.basic.ip)}
+                    ${createEnhancedIPResultItem('IP Versiyonu', data.data.basic.ipVersion)}
+                    ${createEnhancedIPResultItem('Hostname', data.data.basic.hostname)}
+                    ${createEnhancedIPResultItem('Reverse DNS', data.data.basic.reverseDns)}
+                    ${createEnhancedIPResultItem('Registrar', data.data.basic.registrar)}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Enhanced Location Information with accuracy
+    if (data.data.location) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-map-marker-alt"></i> Konum Bilgileri</h4>
+                <div class="ip-result-grid">
+                    ${createEnhancedIPResultItem('Kıta', data.data.location.continent)}
+                    ${createEnhancedIPResultItem('Ülke', `${data.data.location.country} (${data.data.location.countryCode})`)}
+                    ${createEnhancedIPResultItem('Bölge', data.data.location.region)}
+                    ${createEnhancedIPResultItem('Şehir', data.data.location.city)}
+                    ${createEnhancedIPResultItem('Posta Kodu', data.data.location.postalCode)}
+                    ${createEnhancedIPResultItem('Zaman Dilimi', data.data.location.timezone)}
+                </div>
+                ${data.data.location.coordinates ? `
+                    <div class="coordinates-section">
+                        <h5><i class="fas fa-crosshairs"></i> Koordinatlar</h5>
+                        <div class="coordinates-info">
+                            <span>Enlem: ${data.data.location.coordinates.latitude?.toFixed(6) || 'N/A'}</span>
+                            <span>Boylam: ${data.data.location.coordinates.longitude?.toFixed(6) || 'N/A'}</span>
+                            <div class="accuracy-indicator accuracy-${data.data.location.coordinates.accuracy}">
+                                <i class="fas fa-bullseye"></i>
+                                Doğruluk: ${data.data.location.coordinates.accuracy}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Enhanced Network Information
+    if (data.data.network) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-network-wired"></i> Ağ Bilgileri</h4>
+                <div class="ip-result-grid">
+                    ${createEnhancedIPResultItem('İnternet Sağlayıcı', data.data.network.isp)}
+                    ${createEnhancedIPResultItem('Organizasyon', data.data.network.organization)}
+                    ${createEnhancedIPResultItem('Bağlantı Türü', data.data.network.connectionType)}
+                    ${createEnhancedIPResultItem('Kullanım Türü', data.data.network.usageType)}
+                </div>
+                ${data.data.network.asn ? `
+                    <div class="asn-section">
+                        <h5><i class="fas fa-sitemap"></i> ASN Bilgileri</h5>
+                        <div class="ip-result-grid">
+                            ${createEnhancedIPResultItem('ASN Numarası', data.data.network.asn.number)}
+                            ${createEnhancedIPResultItem('ASN Adı', data.data.network.asn.name)}
+                            ${createEnhancedIPResultItem('ASN Türü', data.data.network.asn.type)}
+                            ${createEnhancedIPResultItem('Route', data.data.network.asn.route)}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Enhanced Security Analysis
+    if (data.security) {
+        const riskClass = getRiskClass(data.security.riskScore);
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
+                <div class="security-overview">
+                    <div class="threat-level">
+                        <span>Tehdit Seviyesi: <strong class="security-${data.security.threatLevel}">${getThreatLevelText(data.security.threatLevel)}</strong></span>
+                        <div class="risk-meter">
+                            <div class="risk-fill risk-${riskClass}" style="width: ${data.security.riskScore}%"></div>
+                        </div>
+                        <span>Risk Skoru: ${data.security.riskScore}/100</span>
+                    </div>
+                </div>
+                <div class="security-analysis">
+                    ${createSecurityItem('Proxy', data.security.proxy)}
+                    ${createSecurityItem('VPN', data.security.vpn)}
+                    ${createSecurityItem('Tor', data.security.tor)}
+                    ${createSecurityItem('Hosting', data.security.hosting)}
+                    ${createSecurityItem('Mobil', data.security.mobile)}
+                </div>
+                ${data.security.blacklists && data.security.blacklists.length > 0 ? `
+                    <div class="blacklist-section">
+                        <h5><i class="fas fa-ban"></i> Kara Liste Kontrolü</h5>
+                        <div class="blacklist-results">
+                            ${data.security.blacklists.map(bl => `
+                                <div class="blacklist-item">
+                                    <span class="engine">${bl.engine}</span>
+                                    <span class="result security-danger">${bl.result}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Performance Analysis
+    if (data.performance) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-tachometer-alt"></i> Performans Analizi</h4>
+                <div class="performance-metrics">
+                    <div class="metric">
+                        <span class="metric-label">Ortalama Yanıt Süresi</span>
+                        <span class="metric-value">${Math.round(data.performance.responseTime)}ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">API Erişilebilirliği</span>
+                        <span class="metric-value">${data.performance.availability}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Veri Kalitesi</span>
+                        <span class="metric-value">${data.performance.dataQuality}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Advanced Analysis
+    if (data.analysis) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-chart-line"></i> Gelişmiş Analiz</h4>
+                <div class="analysis-metrics">
+                    <div class="metric">
+                        <span class="metric-label">Veri Tutarlılığı</span>
+                        <span class="metric-value">${data.analysis.dataConsistency}%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Konum Doğruluğu</span>
+                        <span class="metric-value">${data.analysis.geolocationAccuracy}</span>
+                    </div>
+                </div>
+                ${data.analysis.anomalies && data.analysis.anomalies.length > 0 ? `
+                    <div class="anomalies-section">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Tespit Edilen Anomaliler</h5>
+                        ${data.analysis.anomalies.map(anomaly => `
+                            <div class="anomaly-item">
+                                <strong>${anomaly.type}:</strong> ${anomaly.description}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Recommendations
+    if (data.analysis && data.analysis.recommendations && data.analysis.recommendations.length > 0) {
+        html += `
+            <div class="recommendations-panel">
+                <h4><i class="fas fa-lightbulb"></i> Öneriler</h4>
+                ${data.analysis.recommendations.map(rec => `
+                    <div class="recommendation-item">
+                        <div class="recommendation-priority priority-${rec.priority}">${rec.priority}</div>
+                        <div class="recommendation-content">
+                            <strong>${rec.type}:</strong> ${rec.message}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Add action buttons
+    addActionButtons(container, data, 'Enhanced IP Analysis');
+}
+
+function displayEnhancedIBANResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Gelişmiş IBAN Analizi Başarısız</h3>
+                <p>${data?.details || 'IBAN numarası analiz edilemedi veya geçersiz.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="enhanced-sources-info">
+            <h5><i class="fas fa-university"></i> IBAN Doğrulama ve Analiz Sonucu</h5>
+            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
+        </div>
+    `;
+    
+    // Enhanced IBAN Validation Status
+    html += `
+        <div class="enhanced-result-section">
+            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
+            <div class="iban-validation">
+                <span class="validation-badge ${data.isValid ? 'validation-valid' : 'validation-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli IBAN' : 'Geçersiz IBAN'}
+                </span>
+                ${data.validation && data.validation.quality ? `
+                    <div class="quality-score">
+                        <span>Kalite Skoru:</span>
+                        <div class="quality-bar">
+                            <div class="quality-fill quality-${getQualityClass(data.validation.quality)}" style="width: ${data.validation.quality}%"></div>
+                        </div>
+                        <span>${data.validation.quality}/100</span>
+                    </div>
+                ` : ''}
+            </div>
+            <div class="iban-formatted">${data.formatted}</div>
+        </div>
+    `;
+    
+    // Enhanced IBAN Information
+    html += `
+        <div class="enhanced-result-section">
+            <h4><i class="fas fa-info-circle"></i> IBAN Yapısı</h4>
+            <div class="iban-result-grid">
+                ${createEnhancedIBANResultItem('IBAN Numarası', data.iban)}
+                ${createEnhancedIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
+                ${createEnhancedIBANResultItem('Kontrol Rakamları', data.checkDigits)}
+                ${createEnhancedIBANResultItem('Banka Kodu', data.bankCode)}
+                ${data.branchCode ? createEnhancedIBANResultItem('Şube Kodu', data.branchCode) : ''}
+                ${createEnhancedIBANResultItem('Hesap Numarası', data.accountNumber)}
+            </div>
+        </div>
+    `;
+    
+    // Country Information
+    if (data.countryInfo) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-globe"></i> Ülke Bilgileri</h4>
+                <div class="iban-result-grid">
+                    ${createEnhancedIBANResultItem('Bölge', data.countryInfo.region)}
+                    ${createEnhancedIBANResultItem('Para Birimi', data.countryInfo.currency)}
+                    ${createEnhancedIBANResultItem('SEPA Üyesi', data.countryInfo.sepa ? 'Evet' : 'Hayır')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Enhanced Bank Information
+    if (data.bankInfo) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
+                <div class="bank-info-card">
+                    <h5><i class="fas fa-university"></i> ${data.bankInfo.bankName || 'Banka Bilgisi Bulunamadı'}</h5>
+                    <div class="iban-result-grid">
+                        ${createEnhancedIBANResultItem('Banka Türü', data.bankInfo.type || 'Bilinmiyor')}
+                        ${createEnhancedIBANResultItem('BIC/SWIFT Kodu', data.bankInfo.bic || 'Bilinmiyor')}
+                        ${createEnhancedIBANResultItem('Şehir', data.bankInfo.city || 'Bilinmiyor')}
+                        ${data.bankInfo.established ? createEnhancedIBANResultItem('Kuruluş Yılı', data.bankInfo.established) : ''}
+                        ${data.bankInfo.branches ? createEnhancedIBANResultItem('Şube Sayısı', data.bankInfo.branches) : ''}
+                        ${data.bankInfo.website ? createEnhancedIBANResultItem('Website', `<a href="https://${data.bankInfo.website}" target="_blank">${data.bankInfo.website}</a>`) : ''}
+                    </div>
+                    ${data.bankInfo.services && data.bankInfo.services.length > 0 ? `
+                        <div class="bank-services">
+                            <h6>Hizmetler:</h6>
+                            <div class="services-tags">
+                                ${data.bankInfo.services.map(service => `<span class="service-tag">${service}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Security Analysis
+    if (data.security) {
+        const riskClass = getRiskClass(data.security.riskScore);
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
+                <div class="security-overview">
+                    <div class="threat-level">
+                        <span>Risk Seviyesi: <strong class="security-${data.security.riskLevel}">${getRiskLevelText(data.security.riskLevel)}</strong></span>
+                        <div class="risk-meter">
+                            <div class="risk-fill risk-${riskClass}" style="width: ${data.security.riskScore}%"></div>
+                        </div>
+                        <span>Risk Skoru: ${data.security.riskScore}/100</span>
+                    </div>
+                </div>
+                ${data.security.flags && data.security.flags.length > 0 ? `
+                    <div class="security-flags">
+                        <h5><i class="fas fa-flag"></i> Güvenlik Uyarıları</h5>
+                        ${data.security.flags.map(flag => `
+                            <div class="security-flag flag-${flag.severity}">
+                                <strong>${flag.type}:</strong> ${flag.description}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Analytics
+    if (data.analytics) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-chart-pie"></i> Analitik Bilgiler</h4>
+                <div class="analytics-grid">
+                    <div class="analytics-section">
+                        <h5>Yapısal Bilgiler</h5>
+                        <div class="iban-result-grid">
+                            ${createEnhancedIBANResultItem('IBAN Uzunluğu', data.analytics.structure.length)}
+                            ${createEnhancedIBANResultItem('Banka Kodu Uzunluğu', data.analytics.structure.bankCodeLength)}
+                            ${createEnhancedIBANResultItem('Hesap No Uzunluğu', data.analytics.structure.accountNumberLength)}
+                        </div>
+                    </div>
+                    <div class="analytics-section">
+                        <h5>Coğrafi Bilgiler</h5>
+                        <div class="iban-result-grid">
+                            ${createEnhancedIBANResultItem('Bölge', data.analytics.geography.region)}
+                            ${createEnhancedIBANResultItem('Para Birimi', data.analytics.geography.currency)}
+                            ${createEnhancedIBANResultItem('SEPA Uygunluğu', data.analytics.geography.sepaEligible ? 'Evet' : 'Hayır')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Compliance Information
+    if (data.compliance) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-gavel"></i> Uyumluluk Bilgileri</h4>
+                <div class="compliance-grid">
+                    ${createComplianceItem('ISO 13616', data.compliance.iso13616)}
+                    ${createComplianceItem('SEPA', data.compliance.sepa)}
+                    ${createComplianceItem('SWIFT', data.compliance.swift)}
+                    ${createComplianceItem('AML', data.compliance.aml)}
+                    ${createComplianceItem('GDPR', data.compliance.gdpr)}
+                    ${createComplianceItem('PSD2', data.compliance.psd2)}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Recommendations
+    if (data.recommendations && data.recommendations.length > 0) {
+        html += `
+            <div class="recommendations-panel">
+                <h4><i class="fas fa-lightbulb"></i> Öneriler</h4>
+                ${data.recommendations.map(rec => `
+                    <div class="recommendation-item">
+                        <div class="recommendation-priority priority-${rec.priority}">${rec.priority}</div>
+                        <div class="recommendation-content">
+                            <strong>${rec.type}:</strong> ${rec.message}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Add action buttons
+    addActionButtons(container, data, 'Enhanced IBAN Analysis');
+}
+
+// Helper functions for enhanced display
+function createEnhancedIPResultItem(label, value, isWarning = false) {
+    if (!value || value === 'null' || value === 'undefined') {
+        return '';
+    }
+    
+    const warningClass = isWarning ? 'style="color: #ffc107;"' : '';
+    
+    return `
+        <div class="ip-result-item">
+            <span class="ip-result-label">${label}:</span>
+            <span class="ip-result-value" ${warningClass}>${value}</span>
+        </div>
+    `;
+}
+
+function createEnhancedIBANResultItem(label, value) {
+    if (!value || value === 'null' || value === 'undefined') {
+        return '';
+    }
+    
+    return `
+        <div class="iban-result-item">
+            <span class="iban-result-label">${label}:</span>
+            <span class="iban-result-value">${value}</span>
+        </div>
+    `;
+}
+
+function createSecurityItem(label, securityData) {
+    if (!securityData) return '';
+    
+    const detected = securityData.detected;
+    const confidence = securityData.confidence || 0;
+    const statusClass = detected ? 'security-danger' : 'security-clean';
+    const statusText = detected ? 'Tespit Edildi' : 'Temiz';
+    
+    return `
+        <div class="security-item">
+            <span class="security-label">${label}</span>
+            <div class="security-status ${statusClass}">
+                <i class="fas fa-${detected ? 'exclamation-triangle' : 'check'}"></i>
+                ${statusText} (${confidence}%)
+            </div>
+        </div>
+    `;
+}
+
+function createComplianceItem(label, isCompliant) {
+    const statusClass = isCompliant ? 'security-clean' : 'security-warning';
+    const statusText = isCompliant ? 'Uyumlu' : 'Uyumlu Değil';
+    
+    return `
+        <div class="compliance-item">
+            <span class="compliance-label">${label}</span>
+            <div class="compliance-status ${statusClass}">
+                <i class="fas fa-${isCompliant ? 'check' : 'times'}"></i>
+                ${statusText}
+            </div>
+        </div>
+    `;
+}
+
+function getReliabilityClass(score) {
+    if (score >= 80) return 'high';
+    if (score >= 60) return 'medium';
+    return 'low';
+}
+
+function getRiskClass(score) {
+    if (score >= 70) return 'high';
+    if (score >= 40) return 'medium';
+    return 'low';
+}
+
+function getQualityClass(score) {
+    if (score >= 90) return 'excellent';
+    if (score >= 70) return 'good';
+    if (score >= 50) return 'fair';
+    return 'poor';
+}
+
+function getThreatLevelText(level) {
+    const levels = {
+        'clean': 'Temiz',
+        'low': 'Düşük',
+        'medium': 'Orta',
+        'high': 'Yüksek'
+    };
+    return levels[level] || level;
+}
+
+function getRiskLevelText(level) {
+    const levels = {
+        'low': 'Düşük',
+        'medium': 'Orta',
+        'high': 'Yüksek'
+    };
+    return levels[level] || level;
 }
 
 function setExampleIP(ip) {
@@ -1119,1019 +1692,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 let formatted = value.replace(/(.{4})/g, '$1 ').trim();
                 e.target.value = formatted;
             }, 10);
-        });
-    }
-});
-
-// Phone Analysis Functions
-async function queryPhone() {
-    const phone = document.getElementById('phoneInput').value.trim();
-    
-    if (!phone) {
-        showToast('Telefon numarası girin!', 'error');
-        return;
-    }
-    
-    showLoading('phoneResults');
-    
-    const data = await makeApiRequest('phone', { phone });
-    if (data) {
-        displayPhoneResults('phoneResults', data);
-        showToast('Telefon analizi tamamlandı!', 'success');
-    }
-}
-
-function setExamplePhone(phone) {
-    document.getElementById('phoneInput').value = phone;
-}
-
-function displayPhoneResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Telefon Analizi Başarısız</h3>
-                <p>${data?.details || 'Telefon numarası analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #4caf50;">
-            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli Numara' : 'Geçersiz Numara'}
-                </span>
-            </div>
-            ${data.formatted ? `<div class="formatted-display">${data.formatted}</div>` : ''}
-        </div>
-    `;
-    
-    if (data.isValid) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #4caf50;">
-                <h4><i class="fas fa-info-circle"></i> Numara Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Orijinal Numara', data.phone)}
-                    ${createAnalysisResultItem('Formatlanmış', data.formatted)}
-                    ${createAnalysisResultItem('Uluslararası', data.international)}
-                    ${createAnalysisResultItem('Ülke', data.country)}
-                </div>
-            </div>
-            
-            <div class="analysis-result-section" style="--accent-color: #4caf50;">
-                <h4><i class="fas fa-mobile-alt"></i> Operatör ve Tip</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Operatör', data.operator)}
-                    ${createAnalysisResultItem('Numara Tipi', data.type)}
-                    ${createAnalysisResultItem('Bölge/Şehir', data.region)}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Phone Analysis');
-}
-
-// Domain Analysis Functions
-async function queryDomain() {
-    const domain = document.getElementById('domainInput').value.trim();
-    
-    if (!domain) {
-        showToast('Domain adı girin!', 'error');
-        return;
-    }
-    
-    showLoading('domainResults');
-    
-    const data = await makeApiRequest('domain', { domain });
-    if (data) {
-        displayDomainResults('domainResults', data);
-        showToast('Domain analizi tamamlandı!', 'success');
-    }
-}
-
-function setExampleDomain(domain) {
-    document.getElementById('domainInput').value = domain;
-}
-
-function displayDomainResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Domain Analizi Başarısız</h3>
-                <p>${data?.details || 'Domain analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #9c27b0;">
-            <h4><i class="fas fa-globe-americas"></i> Domain Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli Domain' : 'Geçersiz Domain'}
-                </span>
-            </div>
-            <div class="formatted-display">${data.domain}</div>
-        </div>
-    `;
-    
-    if (data.server && !data.server.error) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
-                <h4><i class="fas fa-server"></i> Sunucu Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('HTTP Durumu', data.server.status)}
-                    ${createAnalysisResultItem('Sunucu', data.server.server)}
-                    ${createAnalysisResultItem('Teknoloji', data.server.powered)}
-                    ${createAnalysisResultItem('İçerik Tipi', data.server.contentType)}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (data.ssl) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
-                <h4><i class="fas fa-lock"></i> SSL Sertifikası</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('SSL Durumu', data.ssl.isValid ? 'Geçerli' : 'Geçersiz')}
-                    ${createAnalysisResultItem('Sertifika Otoritesi', data.ssl.issuer)}
-                    ${createAnalysisResultItem('Algoritma', data.ssl.algorithm)}
-                    ${createAnalysisResultItem('Geçerlilik', new Date(data.ssl.validTo).toLocaleDateString('tr-TR'))}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (data.security) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #9c27b0;">
-                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('HTTPS', data.security.hasHTTPS ? 'Var' : 'Yok')}
-                    ${createAnalysisResultItem('HSTS', data.security.hasHSTS ? 'Var' : 'Yok')}
-                    ${createAnalysisResultItem('Malware Kontrolü', data.security.malwareCheck)}
-                    ${createAnalysisResultItem('Phishing Kontrolü', data.security.phishingCheck)}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Domain Analysis');
-}
-
-// BIN Analysis Functions
-async function queryBIN() {
-    const bin = document.getElementById('binInput').value.trim();
-    
-    if (!bin) {
-        showToast('BIN numarası girin!', 'error');
-        return;
-    }
-    
-    if (bin.length < 6) {
-        showToast('BIN numarası en az 6 rakam olmalıdır!', 'error');
-        return;
-    }
-    
-    showLoading('binResults');
-    
-    const data = await makeApiRequest('bin', { bin });
-    if (data) {
-        displayBINResults('binResults', data);
-        showToast('BIN analizi tamamlandı!', 'success');
-    }
-}
-
-function setExampleBIN(bin) {
-    document.getElementById('binInput').value = bin;
-}
-
-function displayBINResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>BIN Analizi Başarısız</h3>
-                <p>${data?.details || 'BIN numarası analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #ff5722;">
-            <h4><i class="fas fa-credit-card"></i> BIN Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli BIN' : 'Geçersiz BIN'}
-                </span>
-            </div>
-            <div class="formatted-display">${data.bin}</div>
-        </div>
-    `;
-    
-    if (data.isValid) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #ff5722;">
-                <h4><i class="fas fa-university"></i> Banka Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Banka Adı', data.bank.name || 'Bilinmiyor')}
-                    ${createAnalysisResultItem('Ülke', data.bank.country || 'Bilinmiyor')}
-                </div>
-            </div>
-            
-            <div class="analysis-result-section" style="--accent-color: #ff5722;">
-                <h4><i class="fas fa-credit-card"></i> Kart Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Kart Tipi', data.card.type || 'Bilinmiyor')}
-                    ${createAnalysisResultItem('Kart Seviyesi', data.card.level || 'Bilinmiyor')}
-                    ${createAnalysisResultItem('Para Birimi', data.card.currency || 'Bilinmiyor')}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'BIN Analysis');
-}
-
-// Email Validation Functions
-async function queryEmail() {
-    const email = document.getElementById('emailInput').value.trim();
-    
-    if (!email) {
-        showToast('Email adresi girin!', 'error');
-        return;
-    }
-    
-    showLoading('emailResults');
-    
-    const data = await makeApiRequest('email', { email });
-    if (data) {
-        displayEmailResults('emailResults', data);
-        showToast('Email doğrulaması tamamlandı!', 'success');
-    }
-}
-
-function setExampleEmail(email) {
-    document.getElementById('emailInput').value = email;
-}
-
-function displayEmailResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Email Doğrulaması Başarısız</h3>
-                <p>${data?.details || 'Email adresi doğrulanamadı.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #2196f3;">
-            <h4><i class="fas fa-envelope"></i> Email Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli Email' : 'Geçersiz Email'}
-                </span>
-            </div>
-            <div class="formatted-display">${data.email}</div>
-        </div>
-    `;
-    
-    if (data.format) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #2196f3;">
-                <h4><i class="fas fa-info-circle"></i> Format Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Kullanıcı Adı', data.format.localPart)}
-                    ${createAnalysisResultItem('Domain', data.format.domainPart)}
-                    ${createAnalysisResultItem('Uzunluk', data.format.length)}
-                    ${createAnalysisResultItem('Rakam İçeriyor', data.format.hasNumbers ? 'Evet' : 'Hayır')}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (data.domain) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #2196f3;">
-                <h4><i class="fas fa-globe"></i> Domain Analizi</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Domain Adı', data.domain.name)}
-                    ${createAnalysisResultItem('Geçici Email', data.domain.isDisposable ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Yaygın Sağlayıcı', data.domain.isCommon ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('MX Kaydı', data.domain.hasMX ? 'Var' : 'Yok')}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (data.security) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #2196f3;">
-                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Risk Seviyesi', data.security.riskLevel)}
-                    ${createAnalysisResultItem('İş Emaili', data.security.isBusinessEmail ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Teslim Edilebilirlik', data.deliverability?.score + '%')}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Email Validation');
-}
-
-// License Plate Functions
-async function queryPlate() {
-    const plate = document.getElementById('plateInput').value.trim();
-    
-    if (!plate) {
-        showToast('Plaka numarası girin!', 'error');
-        return;
-    }
-    
-    showLoading('plateResults');
-    
-    const data = await makeApiRequest('plate', { plate });
-    if (data) {
-        displayPlateResults('plateResults', data);
-        showToast('Plaka sorgusu tamamlandı!', 'success');
-    }
-}
-
-function setExamplePlate(plate) {
-    document.getElementById('plateInput').value = plate;
-}
-
-function displayPlateResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Plaka Sorgusu Başarısız</h3>
-                <p>${data?.details || 'Plaka numarası sorgulanamadı.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #607d8b;">
-            <h4><i class="fas fa-car"></i> Plaka Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli Plaka' : 'Geçersiz Plaka'}
-                </span>
-            </div>
-            ${data.format?.formatted ? `<div class="formatted-display">${data.format.formatted}</div>` : ''}
-        </div>
-    `;
-    
-    if (data.isValid && data.city) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #607d8b;">
-                <h4><i class="fas fa-map-marker-alt"></i> Şehir Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Şehir Kodu', data.city.code)}
-                    ${createAnalysisResultItem('Şehir Adı', data.city.name)}
-                    ${createAnalysisResultItem('Bölge', data.city.region)}
-                </div>
-            </div>
-            
-            <div class="analysis-result-section" style="--accent-color: #607d8b;">
-                <h4><i class="fas fa-car"></i> Araç Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Araç Tipi', data.vehicle.type)}
-                    ${createAnalysisResultItem('Plaka Formatı', data.vehicle.format)}
-                    ${createAnalysisResultItem('Harf Sayısı', data.vehicle.letterCount)}
-                    ${createAnalysisResultItem('Rakam Sayısı', data.vehicle.numberCount)}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'License Plate');
-}
-
-// Helper function for creating analysis result items
-function createAnalysisResultItem(label, value) {
-    if (!value || value === 'null' || value === 'undefined' || value === 'Bilinmiyor') {
-        if (value === 'Bilinmiyor') {
-            return `
-                <div class="analysis-result-item">
-                    <span class="analysis-result-label">${label}:</span>
-                    <span class="analysis-result-value" style="color: #888; font-style: italic;">${value}</span>
-                </div>
-            `;
-        }
-        return '';
-    }
-    
-    return `
-        <div class="analysis-result-item">
-            <span class="analysis-result-label">${label}:</span>
-            <span class="analysis-result-value">${value}</span>
-        </div>
-    `;
-}
-
-// Input formatting for new fields
-document.addEventListener('DOMContentLoaded', function() {
-    // Phone input formatting
-    const phoneInput = document.getElementById('phoneInput');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length <= 11) {
-                if (value.startsWith('0')) {
-                    value = value.substring(0, 11);
-                    if (value.length > 3) {
-                        value = value.substring(0, 4) + ' ' + value.substring(4);
-                    }
-                    if (value.length > 8) {
-                        value = value.substring(0, 8) + ' ' + value.substring(8);
-                    }
-                    if (value.length > 11) {
-                        value = value.substring(0, 11) + ' ' + value.substring(11);
-                    }
-                }
-                e.target.value = value;
-            }
-        });
-    }
-    
-    // BIN input formatting
-    const binInput = document.getElementById('binInput');
-    if (binInput) {
-        binInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length <= 8) {
-                e.target.value = value;
-            }
-        });
-    }
-    
-    // Plate input formatting
-    const plateInput = document.getElementById('plateInput');
-    if (plateInput) {
-        plateInput.addEventListener('input', function(e) {
-            let value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if (value.length <= 8) {
-                e.target.value = value;
-            }
-        });
-    }
-});
-// MAC Address Analysis Functions
-async function queryMAC() {
-    const mac = document.getElementById('macInput').value.trim();
-    
-    if (!mac) {
-        showToast('MAC adresi girin!', 'error');
-        return;
-    }
-    
-    showLoading('macResults');
-    
-    const data = await makeApiRequest('mac', { mac });
-    if (data) {
-        displayMACResults('macResults', data);
-        showToast('MAC analizi tamamlandı!', 'success');
-    }
-}
-
-function setExampleMAC(mac) {
-    document.getElementById('macInput').value = mac;
-}
-
-function displayMACResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>MAC Analizi Başarısız</h3>
-                <p>${data?.details || 'MAC adresi analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #795548;">
-            <h4><i class="fas fa-network-wired"></i> MAC Durumu</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli MAC' : 'Geçersiz MAC'}
-                </span>
-            </div>
-        </div>
-    `;
-    
-    if (data.isValid && data.format) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #795548;">
-                <h4><i class="fas fa-code"></i> Format Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Orijinal', data.format.original)}
-                    ${createAnalysisResultItem('Temizlenmiş', data.format.clean)}
-                    ${createAnalysisResultItem('Colon Format', data.format.colon)}
-                    ${createAnalysisResultItem('Dash Format', data.format.dash)}
-                    ${createAnalysisResultItem('Dot Format', data.format.dot)}
-                </div>
-            </div>
-            
-            <div class="analysis-result-section" style="--accent-color: #795548;">
-                <h4><i class="fas fa-industry"></i> Üretici Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Üretici', data.vendor.vendor)}
-                    ${createAnalysisResultItem('Ülke', data.vendor.country)}
-                </div>
-            </div>
-            
-            <div class="analysis-result-section" style="--accent-color: #795548;">
-                <h4><i class="fas fa-info-circle"></i> Tip Bilgileri</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Unicast', data.type.isUnicast ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Multicast', data.type.isMulticast ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Yerel Yönetimli', data.type.isLocallyAdministered ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Evrensel Yönetimli', data.type.isUniversallyAdministered ? 'Evet' : 'Hayır')}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'MAC Analysis');
-}
-
-// Hash Analysis Functions
-async function queryHash() {
-    const hash = document.getElementById('hashInput').value.trim();
-    const type = document.getElementById('hashType').value;
-    
-    if (!hash) {
-        showToast('Hash değeri girin!', 'error');
-        return;
-    }
-    
-    showLoading('hashResults');
-    
-    const data = await makeApiRequest('hash', { hash, type });
-    if (data) {
-        displayHashResults('hashResults', data);
-        showToast('Hash analizi tamamlandı!', 'success');
-    }
-}
-
-function setExampleHash(hash) {
-    document.getElementById('hashInput').value = hash;
-}
-
-function displayHashResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Hash Analizi Başarısız</h3>
-                <p>${data?.details || 'Hash değeri analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #e91e63;">
-            <h4><i class="fas fa-fingerprint"></i> Hash Bilgileri</h4>
-            <div class="formatted-display">${data.hash}</div>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.analysis.isValid ? 'status-valid' : 'status-invalid'}">
-                    <i class="fas fa-${data.analysis.isValid ? 'check' : 'times'}"></i>
-                    ${data.analysis.isValid ? 'Geçerli Hash' : 'Geçersiz Hash'}
-                </span>
-            </div>
-        </div>
-    `;
-    
-    if (data.analysis) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #e91e63;">
-                <h4><i class="fas fa-info-circle"></i> Analiz Sonuçları</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Hash Tipi', data.analysis.detectedType)}
-                    ${createAnalysisResultItem('Uzunluk', data.analysis.length + ' karakter')}
-                    ${createAnalysisResultItem('Karakter Seti', data.analysis.charset)}
-                    ${createAnalysisResultItem('Entropi', data.analysis.entropy)}
-                </div>
-            </div>
-        `;
-    }
-    
-    if (data.lookup && data.lookup.found) {
-        html += `
-            <div class="analysis-result-section" style="--accent-color: #4caf50;">
-                <h4><i class="fas fa-search"></i> Hash Lookup</h4>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Bulunan Metin', data.lookup.plaintext)}
-                    ${createAnalysisResultItem('Kaynak', data.lookup.source)}
-                    ${createAnalysisResultItem('Güven', data.lookup.confidence + '%')}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Hash Analysis');
-}
-
-// Base64 Functions
-async function encodeBase64() {
-    const text = document.getElementById('base64Input').value.trim();
-    
-    if (!text) {
-        showToast('Çevrilecek metin girin!', 'error');
-        return;
-    }
-    
-    showLoading('base64Results');
-    
-    const data = await makeApiRequestPost('base64', { text, operation: 'encode' });
-    if (data) {
-        displayBase64Results('base64Results', data);
-        showToast('Base64 kodlama tamamlandı!', 'success');
-    }
-}
-
-async function decodeBase64() {
-    const text = document.getElementById('base64Input').value.trim();
-    
-    if (!text) {
-        showToast('Çözülecek Base64 metni girin!', 'error');
-        return;
-    }
-    
-    showLoading('base64Results');
-    
-    const data = await makeApiRequestPost('base64', { text, operation: 'decode' });
-    if (data) {
-        displayBase64Results('base64Results', data);
-        showToast('Base64 çözme tamamlandı!', 'success');
-    }
-}
-
-function setExampleBase64(text) {
-    document.getElementById('base64Input').value = text;
-}
-
-function displayBase64Results(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Base64 İşlemi Başarısız</h3>
-                <p>${data?.details || 'Base64 işlemi gerçekleştirilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #3f51b5;">
-            <h4><i class="fas fa-code"></i> ${data.operation === 'encode' ? 'Kodlama' : 'Çözme'} Sonucu</h4>
-            <div class="analysis-result-grid">
-                ${createAnalysisResultItem('İşlem', data.operation === 'encode' ? 'Base64 Kodlama' : 'Base64 Çözme')}
-                ${createAnalysisResultItem('Giriş Uzunluğu', data.input.length + ' karakter')}
-                ${createAnalysisResultItem('Çıkış Uzunluğu', data.result.length + ' karakter')}
-            </div>
-            <div style="margin: 20px 0;">
-                <h5 style="color: #3f51b5; margin-bottom: 10px;">Sonuç:</h5>
-                <div class="formatted-display" style="word-break: break-all;">${data.result}</div>
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Base64 Conversion');
-}
-
-// QR Code Functions
-async function generateQR() {
-    const text = document.getElementById('qrInput').value.trim();
-    const size = document.getElementById('qrSize').value;
-    const format = document.getElementById('qrFormat').value;
-    
-    if (!text) {
-        showToast('QR koda dönüştürülecek metin girin!', 'error');
-        return;
-    }
-    
-    showLoading('qrResults');
-    
-    const data = await makeApiRequestPost('qr', { text, size, format });
-    if (data) {
-        displayQRResults('qrResults', data);
-        showToast('QR kod oluşturuldu!', 'success');
-    }
-}
-
-function setExampleQR(text) {
-    document.getElementById('qrInput').value = text;
-}
-
-function displayQRResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>QR Kod Oluşturulamadı</h3>
-                <p>${data?.details || 'QR kod oluşturulamadı.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #8b4513;">
-            <h4><i class="fas fa-qrcode"></i> QR Kod Bilgileri</h4>
-            <div class="analysis-result-grid">
-                ${createAnalysisResultItem('Metin', data.text)}
-                ${createAnalysisResultItem('Boyut', data.size + 'x' + data.size)}
-                ${createAnalysisResultItem('Format', data.format.toUpperCase())}
-            </div>
-        </div>
-        
-        <div class="qr-result-display">
-            <h5 style="color: #8b4513; margin-bottom: 20px;">
-                <i class="fas fa-qrcode"></i> Oluşturulan QR Kod
-            </h5>
-            <img src="${data.qrUrl}" alt="QR Code" style="max-width: ${data.size}px;">
-            <div style="margin-top: 20px;">
-                <a href="${data.downloadUrl}" target="_blank" class="query-btn" style="display: inline-flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-download"></i> QR Kodu İndir
-                </a>
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'QR Code');
-}
-
-// Password Security Analysis Functions
-async function analyzePassword() {
-    const password = document.getElementById('passwordInput').value;
-    
-    if (!password) {
-        showToast('Analiz edilecek şifre girin!', 'error');
-        return;
-    }
-    
-    showLoading('passwordResults');
-    
-    const data = await makeApiRequestPost('password', { password });
-    if (data) {
-        displayPasswordResults('passwordResults', data);
-        showToast('Şifre analizi tamamlandı!', 'success');
-    }
-}
-
-function setExamplePassword(password) {
-    document.getElementById('passwordInput').value = password;
-}
-
-function togglePasswordVisibility() {
-    const input = document.getElementById('passwordInput');
-    const icon = document.getElementById('passwordToggleIcon');
-    
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'fas fa-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'fas fa-eye';
-    }
-}
-
-function displayPasswordResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Şifre Analizi Başarısız</h3>
-                <p>${data?.details || 'Şifre analiz edilemedi.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    const strengthClass = data.level.toLowerCase().replace(' ', '-');
-    
-    let html = `
-        <div class="analysis-result-section" style="--accent-color: #f44336;">
-            <h4><i class="fas fa-shield-alt"></i> Şifre Güvenlik Analizi</h4>
-            <div style="text-align: center; margin: 20px 0;">
-                <span class="status-badge ${data.score >= 70 ? 'status-valid' : data.score >= 40 ? 'status-warning' : 'status-invalid'}">
-                    <i class="fas fa-shield-alt"></i>
-                    ${data.level} (${data.score}/100)
-                </span>
-            </div>
-            <div class="password-strength-meter">
-                <div class="password-strength-fill strength-${strengthClass}" style="width: ${data.score}%;"></div>
-            </div>
-        </div>
-        
-        <div class="analysis-result-section" style="--accent-color: #f44336;">
-            <h4><i class="fas fa-info-circle"></i> Şifre Özellikleri</h4>
-            <div class="analysis-result-grid">
-                ${createAnalysisResultItem('Uzunluk', data.length + ' karakter')}
-                ${createAnalysisResultItem('Küçük Harf', data.strength.hasLowercase ? 'Var' : 'Yok')}
-                ${createAnalysisResultItem('Büyük Harf', data.strength.hasUppercase ? 'Var' : 'Yok')}
-                ${createAnalysisResultItem('Rakam', data.strength.hasNumbers ? 'Var' : 'Yok')}
-                ${createAnalysisResultItem('Özel Karakter', data.strength.hasSpecialChars ? 'Var' : 'Yok')}
-                ${createAnalysisResultItem('Karakter Çeşitliliği', data.strength.characterSets + '/4')}
-                ${createAnalysisResultItem('Yaygın Şifre', data.isCommon ? 'Evet' : 'Hayır')}
-            </div>
-        </div>
-    `;
-    
-    if (data.recommendations && data.recommendations.length > 0) {
-        html += `
-            <div class="password-recommendations">
-                <h5><i class="fas fa-lightbulb"></i> Güvenlik Önerileri</h5>
-                <ul>
-                    ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Password Analysis');
-}
-
-// Enhanced API request function for POST requests
-async function makeApiRequestPost(endpoint, data) {
-    try {
-        const response = await fetch(`/api/${endpoint}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            return result;
-        } else {
-            showToast(result.error || 'API isteği başarısız!', 'error');
-            return null;
-        }
-    } catch (error) {
-        showToast('Bağlantı hatası!', 'error');
-        return null;
-    }
-}
-
-// Enhanced IP display function
-function displayEnhancedIPResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>IP Sorgusu Başarısız</h3>
-                <p>IP adresi sorgulanamadı veya geçersiz.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="enhanced-ip-section">
-            <h4><i class="fas fa-database"></i> Gelişmiş IP Analizi</h4>
-            <p>${data.sources} farklı API'den birleştirilmiş sonuç | Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
-            <div class="confidence-meter">
-                <span>Güvenilirlik:</span>
-                <div class="confidence-bar">
-                    <div class="confidence-fill" style="width: ${data.confidence}%;"></div>
-                </div>
-                <span>${data.confidence}%</span>
-            </div>
-        </div>
-    `;
-    
-    // Add map integration if coordinates available
-    if (data.data.location && data.data.location.latitude && data.data.location.longitude) {
-        const mapUrl = `https://www.google.com/maps?q=${data.data.location.latitude},${data.data.location.longitude}`;
-        html += `
-            <div class="map-container">
-                <h5><i class="fas fa-map-marker-alt"></i> Konum Haritası</h5>
-                <a href="${mapUrl}" target="_blank" class="map-link">
-                    <i class="fas fa-external-link-alt"></i>
-                    Google Maps'te Görüntüle
-                </a>
-            </div>
-        `;
-    }
-    
-    // Enhanced security section with risk score
-    if (data.data.security) {
-        const riskLevel = data.data.security.riskScore > 50 ? 'high' : data.data.security.riskScore > 25 ? 'medium' : 'low';
-        html += `
-            <div class="enhanced-ip-section">
-                <h4><i class="fas fa-shield-alt"></i> Gelişmiş Güvenlik Analizi</h4>
-                <div style="margin: 15px 0;">
-                    <span class="risk-indicator risk-${riskLevel}">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Risk Skoru: ${data.data.security.riskScore}/100
-                    </span>
-                </div>
-                <div class="analysis-result-grid">
-                    ${createAnalysisResultItem('Proxy', data.data.security.proxy ? 'Tespit Edildi' : 'Tespit Edilmedi')}
-                    ${createAnalysisResultItem('VPN', data.data.security.vpn ? 'Tespit Edildi' : 'Tespit Edilmedi')}
-                    ${createAnalysisResultItem('Tor', data.data.security.tor ? 'Tespit Edildi' : 'Tespit Edilmedi')}
-                    ${createAnalysisResultItem('Hosting', data.data.security.hosting ? 'Evet' : 'Hayır')}
-                    ${createAnalysisResultItem('Blacklist Durumu', data.data.security.blacklist?.reputation || 'Temiz')}
-                    ${createAnalysisResultItem('Tehdit Seviyesi', data.data.security.threatIntel?.threatLevel || 'Düşük')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Continue with existing IP display logic...
-    html += displayIPResults(containerId, data, false); // false = don't replace, append
-    
-    container.innerHTML = html;
-    addActionButtons(container, data, 'Enhanced IP Lookup');
-}
-
-// Input formatting enhancements
-document.addEventListener('DOMContentLoaded', function() {
-    // MAC input formatting
-    const macInput = document.getElementById('macInput');
-    if (macInput) {
-        macInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
-            if (value.length <= 12) {
-                // Format as XX:XX:XX:XX:XX:XX
-                value = value.replace(/(.{2})/g, '$1:').slice(0, -1);
-                e.target.value = value;
-            }
-        });
-    }
-    
-    // Hash input formatting
-    const hashInput = document.getElementById('hashInput');
-    if (hashInput) {
-        hashInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
-            if (value.length <= 128) {
-                e.target.value = value;
-            }
         });
     }
 });

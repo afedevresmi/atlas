@@ -44,7 +44,6 @@
             </div>
             <ul class="nav-menu">
                 <li><a href="#" data-page="home" class="nav-link active"><i class="fas fa-home"></i> Anasayfa</a></li>
-                <li><a href="#" data-page="supersearch" class="nav-link super-search"><i class="fas fa-rocket"></i> Süper Sorgu</a></li>
                 <li><a href="#" data-page="adsoyad" class="nav-link"><i class="fas fa-users"></i> Ad Soyad Sorgu</a></li>
                 <li><a href="#" data-page="tc" class="nav-link"><i class="fas fa-id-card"></i> TC Sorgu</a></li>
                 <li><a href="#" data-page="adres" class="nav-link"><i class="fas fa-map-marker-alt"></i> Adres Sorgu</a></li>
@@ -54,16 +53,6 @@
                 <li><a href="#" data-page="gsmtc" class="nav-link"><i class="fas fa-phone"></i> GSM → TC</a></li>
                 <li><a href="#" data-page="iplookup" class="nav-link"><i class="fas fa-globe"></i> IP Sorgu</a></li>
                 <li><a href="#" data-page="iban" class="nav-link"><i class="fas fa-university"></i> IBAN Sorgu</a></li>
-                <li><a href="#" data-page="phone" class="nav-link"><i class="fas fa-phone"></i> Telefon Analizi</a></li>
-                <li><a href="#" data-page="domain" class="nav-link"><i class="fas fa-globe-americas"></i> Domain Analizi</a></li>
-                <li><a href="#" data-page="bin" class="nav-link"><i class="fas fa-credit-card"></i> Kart BIN Sorgu</a></li>
-                <li><a href="#" data-page="email" class="nav-link"><i class="fas fa-envelope"></i> Email Doğrulama</a></li>
-                <li><a href="#" data-page="plate" class="nav-link"><i class="fas fa-car"></i> Plaka Sorgu</a></li>
-                <li><a href="#" data-page="mac" class="nav-link"><i class="fas fa-network-wired"></i> MAC Analizi</a></li>
-                <li><a href="#" data-page="hash" class="nav-link"><i class="fas fa-fingerprint"></i> Hash Analizi</a></li>
-                <li><a href="#" data-page="base64" class="nav-link"><i class="fas fa-code"></i> Base64 Çevirici</a></li>
-                <li><a href="#" data-page="qr" class="nav-link"><i class="fas fa-qrcode"></i> QR Kod</a></li>
-                <li><a href="#" data-page="password" class="nav-link"><i class="fas fa-shield-alt"></i> Şifre Analizi</a></li>
                 <li id="adminMenuItem" class="hidden"><a href="#" data-page="admin" class="nav-link"><i class="fas fa-cog"></i> Admin Panel</a></li>
             </ul>
         </nav>
@@ -221,342 +210,70 @@
             <!-- Enhanced IP Lookup Page -->
             <div id="iplookupPage" class="page">
                 <div class="page-header">
-                    <h1 class="page-title">Gelişmiş IP Adres Sorgu</h1>
-                    <p class="page-subtitle">Kapsamlı IP analizi - 10+ farklı API'den birleşik sonuç + Güvenlik Analizi</p>
+                    <h1 class="page-title">Gelişmiş IP Adres Analizi</h1>
+                    <p class="page-subtitle">15+ API'den birleşik sonuç - Kapsamlı güvenlik ve konum analizi</p>
                 </div>
                 <div class="query-form" data-aos="fade-up">
                     <div class="ip-input-section">
-                        <input type="text" id="ipInput" placeholder="IP Adresi (örn: 8.8.8.8)" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+                        <input type="text" id="ipInput" placeholder="IP Adresi (IPv4 veya IPv6)" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$">
                         <div class="ip-examples">
-                            <span>Örnekler:</span>
+                            <span>IPv4 Örnekleri:</span>
                             <button type="button" onclick="setExampleIP('8.8.8.8')" class="example-ip">8.8.8.8</button>
                             <button type="button" onclick="setExampleIP('1.1.1.1')" class="example-ip">1.1.1.1</button>
                             <button type="button" onclick="setExampleIP('208.67.222.222')" class="example-ip">208.67.222.222</button>
+                            <button type="button" onclick="setExampleIP('185.228.168.9')" class="example-ip">185.228.168.9</button>
+                        </div>
+                        <div class="ip-examples">
+                            <span>IPv6 Örnekleri:</span>
+                            <button type="button" onclick="setExampleIP('2001:4860:4860::8888')" class="example-ip ipv6">2001:4860:4860::8888</button>
+                            <button type="button" onclick="setExampleIP('2606:4700:4700::1111')" class="example-ip ipv6">2606:4700:4700::1111</button>
                             <button type="button" onclick="getMyIP()" class="example-ip my-ip">Benim IP'm</button>
                         </div>
+                        <div class="ip-analysis-options">
+                            <label><input type="checkbox" id="deepAnalysis" checked> Derin Güvenlik Analizi</label>
+                            <label><input type="checkbox" id="performanceAnalysis" checked> Performans Analizi</label>
+                            <label><input type="checkbox" id="reputationCheck" checked> Reputation Kontrolü</label>
+                        </div>
                     </div>
-                    <button onclick="queryIPLookup()" class="query-btn"><i class="fas fa-search"></i> IP Sorgula</button>
+                    <button onclick="queryEnhancedIP()" class="query-btn enhanced"><i class="fas fa-search-plus"></i> Gelişmiş IP Analizi</button>
                 </div>
-                <div id="iplookupResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+                <div id="iplookupResults" class="results-container enhanced" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
-            <!-- IBAN Lookup Page -->
+            <!-- Enhanced IBAN Lookup Page -->
             <div id="ibanPage" class="page">
                 <div class="page-header">
-                    <h1 class="page-title">IBAN Doğrulama ve Sorgu</h1>
-                    <p class="page-subtitle">IBAN numarası doğrulama ve banka bilgisi sorgulama</p>
+                    <h1 class="page-title">Gelişmiş IBAN Analizi ve Doğrulama</h1>
+                    <p class="page-subtitle">Kapsamlı IBAN doğrulama, banka analizi ve güvenlik kontrolü</p>
                 </div>
                 <div class="query-form" data-aos="fade-up">
                     <div class="iban-input-section">
-                        <input type="text" id="ibanInput" placeholder="IBAN Numarası (örn: TR330006100519786457841326)" maxlength="34">
+                        <input type="text" id="ibanInput" placeholder="IBAN Numarası (örn: TR330006100519786457841326)" maxlength="40">
                         <div class="iban-examples">
-                            <span>Örnekler:</span>
+                            <span>Türkiye Örnekleri:</span>
                             <button type="button" onclick="setExampleIBAN('TR330006100519786457841326')" class="example-iban">TR33 0006 1005 1978 6457 8413 26</button>
+                            <button type="button" onclick="setExampleIBAN('TR640001200009300131000001')" class="example-iban">TR64 0001 2000 0930 0131 0000 01</button>
+                        </div>
+                        <div class="iban-examples">
+                            <span>Uluslararası Örnekler:</span>
                             <button type="button" onclick="setExampleIBAN('DE89370400440532013000')" class="example-iban">DE89 3704 0044 0532 0130 00</button>
                             <button type="button" onclick="setExampleIBAN('GB29NWBK60161331926819')" class="example-iban">GB29 NWBK 6016 1331 9268 19</button>
+                            <button type="button" onclick="setExampleIBAN('FR1420041010050500013M02606')" class="example-iban">FR14 2004 1010 0505 0001 3M02 606</button>
                         </div>
                         <div class="iban-info">
                             <i class="fas fa-info-circle"></i>
-                            <span>IBAN numarasını boşluklu veya boşluksuz girebilirsiniz</span>
+                            <span>IBAN numarasını boşluklu veya boşluksuz girebilirsiniz. Otomatik formatlama yapılır.</span>
+                        </div>
+                        <div class="iban-analysis-options">
+                            <label><input type="checkbox" id="securityAnalysis" checked> Güvenlik Analizi</label>
+                            <label><input type="checkbox" id="complianceCheck" checked> Uyumluluk Kontrolü</label>
+                            <label><input type="checkbox" id="bankVerification" checked> Banka Doğrulama</label>
+                            <label><input type="checkbox" id="riskAssessment" checked> Risk Değerlendirmesi</label>
                         </div>
                     </div>
-                    <button onclick="queryIBAN()" class="query-btn"><i class="fas fa-university"></i> IBAN Sorgula</button>
+                    <button onclick="queryEnhancedIBAN()" class="query-btn enhanced"><i class="fas fa-university"></i> Gelişmiş IBAN Analizi</button>
                 </div>
-                <div id="ibanResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Phone Analysis Page -->
-            <div id="phonePage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Telefon Numarası Analizi</h1>
-                    <p class="page-subtitle">Operatör, bölge ve numara tipi analizi</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="phone-input-section">
-                        <input type="text" id="phoneInput" placeholder="Telefon Numarası (örn: 05321234567)" maxlength="15">
-                        <div class="phone-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExamplePhone('05321234567')" class="example-phone">0532 123 45 67</button>
-                            <button type="button" onclick="setExamplePhone('02121234567')" class="example-phone">0212 123 45 67</button>
-                            <button type="button" onclick="setExamplePhone('05551234567')" class="example-phone">0555 123 45 67</button>
-                        </div>
-                        <div class="phone-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Türk telefon numaralarını analiz eder (GSM ve sabit hat)</span>
-                        </div>
-                    </div>
-                    <button onclick="queryPhone()" class="query-btn"><i class="fas fa-phone"></i> Telefon Analiz Et</button>
-                </div>
-                <div id="phoneResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Domain Analysis Page -->
-            <div id="domainPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Domain/Website Analizi</h1>
-                    <p class="page-subtitle">WHOIS, DNS, SSL ve güvenlik analizi</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="domain-input-section">
-                        <input type="text" id="domainInput" placeholder="Domain Adı (örn: google.com)" maxlength="100">
-                        <div class="domain-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleDomain('google.com')" class="example-domain">google.com</button>
-                            <button type="button" onclick="setExampleDomain('github.com')" class="example-domain">github.com</button>
-                            <button type="button" onclick="setExampleDomain('stackoverflow.com')" class="example-domain">stackoverflow.com</button>
-                        </div>
-                        <div class="domain-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Domain adını http:// veya www. olmadan girin</span>
-                        </div>
-                    </div>
-                    <button onclick="queryDomain()" class="query-btn"><i class="fas fa-globe-americas"></i> Domain Analiz Et</button>
-                </div>
-                <div id="domainResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- BIN Analysis Page -->
-            <div id="binPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Kredi Kartı BIN Analizi</h1>
-                    <p class="page-subtitle">Banka, kart tipi ve ülke bilgisi sorgulama</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="bin-input-section">
-                        <input type="text" id="binInput" placeholder="BIN Numarası (ilk 6-8 rakam)" maxlength="8">
-                        <div class="bin-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleBIN('540061')" class="example-bin">540061 (Akbank)</button>
-                            <button type="button" onclick="setExampleBIN('454360')" class="example-bin">454360 (Garanti)</button>
-                            <button type="button" onclick="setExampleBIN('627892')" class="example-bin">627892 (Troy)</button>
-                        </div>
-                        <div class="bin-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Kredi kartının ilk 6-8 rakamını girin (BIN numarası)</span>
-                        </div>
-                    </div>
-                    <button onclick="queryBIN()" class="query-btn"><i class="fas fa-credit-card"></i> BIN Analiz Et</button>
-                </div>
-                <div id="binResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Email Validation Page -->
-            <div id="emailPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Email Doğrulama</h1>
-                    <p class="page-subtitle">Email format, domain ve güvenlik kontrolü</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="email-input-section">
-                        <input type="email" id="emailInput" placeholder="Email Adresi (örn: user@example.com)" maxlength="100">
-                        <div class="email-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleEmail('test@gmail.com')" class="example-email">test@gmail.com</button>
-                            <button type="button" onclick="setExampleEmail('user@company.com')" class="example-email">user@company.com</button>
-                            <button type="button" onclick="setExampleEmail('admin@tempmail.org')" class="example-email">admin@tempmail.org</button>
-                        </div>
-                        <div class="email-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Email adresinin geçerliliği ve güvenliği kontrol edilir</span>
-                        </div>
-                    </div>
-                    <button onclick="queryEmail()" class="query-btn"><i class="fas fa-envelope"></i> Email Doğrula</button>
-                </div>
-                <div id="emailResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- License Plate Page -->
-            <div id="platePage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Plaka Sorgu</h1>
-                    <p class="page-subtitle">İl, bölge ve araç tipi bilgisi</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="plate-input-section">
-                        <input type="text" id="plateInput" placeholder="Plaka (örn: 34ABC123)" maxlength="10">
-                        <div class="plate-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExamplePlate('34ABC123')" class="example-plate">34 ABC 123</button>
-                            <button type="button" onclick="setExamplePlate('06XYZ456')" class="example-plate">06 XYZ 456</button>
-                            <button type="button" onclick="setExamplePlate('35DEF789')" class="example-plate">35 DEF 789</button>
-                        </div>
-                        <div class="plate-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Türk plaka formatında girin (örn: 34ABC123)</span>
-                        </div>
-                    </div>
-                    <button onclick="queryPlate()" class="query-btn"><i class="fas fa-car"></i> Plaka Sorgula</button>
-                </div>
-                <div id="plateResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Super Search Page -->
-            <div id="supersearchPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">🚀 Süper Sorgu Sistemi</h1>
-                    <p class="page-subtitle">Tek seferde tüm bilgileri sorgula - Ad soyaddan her şeyi öğren!</p>
-                </div>
-                <div class="query-form super-form" data-aos="fade-up">
-                    <div class="super-input-section">
-                        <div class="input-row">
-                            <input type="text" id="superAdi" placeholder="Ad" required>
-                            <input type="text" id="superSoyadi" placeholder="Soyad" required>
-                            <input type="text" id="superTC" placeholder="TC (Opsiyonel)" maxlength="11">
-                        </div>
-                        <div class="super-info">
-                            <i class="fas fa-rocket"></i>
-                            <span>Bu sorgu TC, adres, işyeri, sülale, telefon bilgilerini tek seferde getirir!</span>
-                        </div>
-                        <div class="super-warning">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span>Bu işlem 5-10 saniye sürebilir. Lütfen bekleyin...</span>
-                        </div>
-                    </div>
-                    <button onclick="querySuperSearch()" class="query-btn super-btn">
-                        <i class="fas fa-rocket"></i> Süper Sorgu Başlat
-                    </button>
-                </div>
-                <div id="supersearchResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- MAC Address Analysis Page -->
-            <div id="macPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">MAC Adres Analizi</h1>
-                    <p class="page-subtitle">Üretici, format ve tip analizi</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="mac-input-section">
-                        <input type="text" id="macInput" placeholder="MAC Adresi (örn: 00:1B:63:84:45:E6)" maxlength="17">
-                        <div class="mac-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleMAC('00:1B:63:84:45:E6')" class="example-mac">00:1B:63:84:45:E6</button>
-                            <button type="button" onclick="setExampleMAC('08-00-27-12-34-56')" class="example-mac">08-00-27-12-34-56</button>
-                            <button type="button" onclick="setExampleMAC('0050E4ABCDEF')" class="example-mac">0050E4ABCDEF</button>
-                        </div>
-                        <div class="mac-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>MAC adresini herhangi bir formatta girebilirsiniz</span>
-                        </div>
-                    </div>
-                    <button onclick="queryMAC()" class="query-btn"><i class="fas fa-network-wired"></i> MAC Analiz Et</button>
-                </div>
-                <div id="macResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Hash Analysis Page -->
-            <div id="hashPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Hash Analizi</h1>
-                    <p class="page-subtitle">MD5, SHA1, SHA256 ve diğer hash türleri</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="hash-input-section">
-                        <input type="text" id="hashInput" placeholder="Hash değeri (örn: 5d41402abc4b2a76b9719d911017c592)" maxlength="128">
-                        <select id="hashType">
-                            <option value="auto">Otomatik Tespit</option>
-                            <option value="MD5">MD5 (32 karakter)</option>
-                            <option value="SHA1">SHA1 (40 karakter)</option>
-                            <option value="SHA256">SHA256 (64 karakter)</option>
-                            <option value="SHA512">SHA512 (128 karakter)</option>
-                        </select>
-                        <div class="hash-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleHash('5d41402abc4b2a76b9719d911017c592')" class="example-hash">MD5 Hash</button>
-                            <button type="button" onclick="setExampleHash('aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')" class="example-hash">SHA1 Hash</button>
-                        </div>
-                        <div class="hash-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Hash türü otomatik tespit edilir veya manuel seçebilirsiniz</span>
-                        </div>
-                    </div>
-                    <button onclick="queryHash()" class="query-btn"><i class="fas fa-fingerprint"></i> Hash Analiz Et</button>
-                </div>
-                <div id="hashResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Base64 Converter Page -->
-            <div id="base64Page" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Base64 Çevirici</h1>
-                    <p class="page-subtitle">Metin ↔ Base64 dönüştürme</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="base64-input-section">
-                        <textarea id="base64Input" placeholder="Çevrilecek metni buraya girin..." rows="4"></textarea>
-                        <div class="base64-controls">
-                            <button onclick="encodeBase64()" class="query-btn encode-btn"><i class="fas fa-arrow-right"></i> Base64'e Çevir</button>
-                            <button onclick="decodeBase64()" class="query-btn decode-btn"><i class="fas fa-arrow-left"></i> Base64'ten Çevir</button>
-                        </div>
-                        <div class="base64-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleBase64('Hello World!')" class="example-base64">Metin</button>
-                            <button type="button" onclick="setExampleBase64('SGVsbG8gV29ybGQh')" class="example-base64">Base64</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="base64Results" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- QR Code Generator Page -->
-            <div id="qrPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">QR Kod Oluşturucu</h1>
-                    <p class="page-subtitle">Metin, URL ve veri için QR kod üretimi</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="qr-input-section">
-                        <textarea id="qrInput" placeholder="QR koda dönüştürülecek metni girin..." rows="3"></textarea>
-                        <div class="qr-options">
-                            <select id="qrSize">
-                                <option value="150">150x150</option>
-                                <option value="200" selected>200x200</option>
-                                <option value="300">300x300</option>
-                                <option value="400">400x400</option>
-                            </select>
-                            <select id="qrFormat">
-                                <option value="png">PNG</option>
-                                <option value="jpg">JPG</option>
-                                <option value="svg">SVG</option>
-                            </select>
-                        </div>
-                        <div class="qr-examples">
-                            <span>Örnekler:</span>
-                            <button type="button" onclick="setExampleQR('https://github.com')" class="example-qr">Website URL</button>
-                            <button type="button" onclick="setExampleQR('Atlas Panel - Güvenli Sorgu Sistemi')" class="example-qr">Metin</button>
-                        </div>
-                    </div>
-                    <button onclick="generateQR()" class="query-btn"><i class="fas fa-qrcode"></i> QR Kod Oluştur</button>
-                </div>
-                <div id="qrResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Password Security Analysis Page -->
-            <div id="passwordPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Şifre Güvenlik Analizi</h1>
-                    <p class="page-subtitle">Şifre gücü ve güvenlik öneriler</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="password-input-section">
-                        <input type="password" id="passwordInput" placeholder="Analiz edilecek şifreyi girin..." maxlength="100">
-                        <button type="button" onclick="togglePasswordVisibility()" class="password-toggle">
-                            <i class="fas fa-eye" id="passwordToggleIcon"></i>
-                        </button>
-                        <div class="password-examples">
-                            <span>Test Şifreleri:</span>
-                            <button type="button" onclick="setExamplePassword('123456')" class="example-password">Zayıf</button>
-                            <button type="button" onclick="setExamplePassword('Password123')" class="example-password">Orta</button>
-                            <button type="button" onclick="setExamplePassword('MyStr0ng!P@ssw0rd2024')" class="example-password">Güçlü</button>
-                        </div>
-                        <div class="password-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Şifreniz analiz edilir ancak hiçbir yere kaydedilmez</span>
-                        </div>
-                    </div>
-                    <button onclick="analyzePassword()" class="query-btn"><i class="fas fa-shield-alt"></i> Şifre Analiz Et</button>
-                </div>
-                <div id="passwordResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+                <div id="ibanResults" class="results-container enhanced" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Admin Panel Page -->
@@ -586,24 +303,6 @@
                 <div class="admin-section" data-aos="fade-up" data-aos-delay="200">
                     <h3>Mevcut Kullanıcılar</h3>
                     <div id="usersList" class="results-container"></div>
-                </div>
-
-                <!-- Query Logs -->
-                <div class="admin-section" data-aos="fade-up" data-aos-delay="300">
-                    <h3>Sorgu Logları</h3>
-                    <div class="log-filters">
-                        <input type="text" id="filterUsername" placeholder="Kullanıcı adı filtrele">
-                        <select id="filterEndpoint">
-                            <option value="">Tüm Sorgular</option>
-                            <option value="tc">TC Sorgu</option>
-                            <option value="adsoyad">Ad Soyad</option>
-                            <option value="iplookup">IP Lookup</option>
-                            <option value="supersearch">Süper Sorgu</option>
-                        </select>
-                        <button onclick="loadQueryLogs()" class="filter-btn"><i class="fas fa-filter"></i> Filtrele</button>
-                    </div>
-                    <div id="queryLogs" class="results-container"></div>
-                    <div class="pagination" id="logsPagination"></div>
                 </div>
             </div>
         </main>
