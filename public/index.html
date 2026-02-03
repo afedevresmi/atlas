@@ -44,6 +44,7 @@
             </div>
             <ul class="nav-menu">
                 <li><a href="#" data-page="home" class="nav-link active"><i class="fas fa-home"></i> Anasayfa</a></li>
+                <li><a href="#" data-page="supersearch" class="nav-link"><i class="fas fa-search-plus"></i> Super Search</a></li>
                 <li><a href="#" data-page="adsoyad" class="nav-link"><i class="fas fa-users"></i> Ad Soyad Sorgu</a></li>
                 <li><a href="#" data-page="tc" class="nav-link"><i class="fas fa-id-card"></i> TC Sorgu</a></li>
                 <li><a href="#" data-page="adres" class="nav-link"><i class="fas fa-map-marker-alt"></i> Adres Sorgu</a></li>
@@ -114,6 +115,41 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Super Search Page -->
+            <div id="supersearchPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Super Search</h1>
+                    <p class="page-subtitle">Akıllı arama sistemi - Tek kutuda tüm sorgular</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="super-search-container">
+                        <div class="search-input-wrapper">
+                            <input type="text" id="superSearchInput" placeholder="TC, GSM, IP, IBAN, Ad Soyad veya herhangi bir veri girin..." maxlength="50">
+                            <div class="search-suggestions" id="searchSuggestions"></div>
+                        </div>
+                        <div class="search-options">
+                            <label class="search-option">
+                                <input type="checkbox" id="autoDetect" checked>
+                                <span>Otomatik Algılama</span>
+                            </label>
+                            <label class="search-option">
+                                <input type="checkbox" id="multiSearch" checked>
+                                <span>Çoklu Arama</span>
+                            </label>
+                            <label class="search-option">
+                                <input type="checkbox" id="deepSearch">
+                                <span>Derin Arama</span>
+                            </label>
+                        </div>
+                        <div class="detected-types" id="detectedTypes"></div>
+                    </div>
+                    <button onclick="performSuperSearch()" class="query-btn super-search-btn">
+                        <i class="fas fa-search-plus"></i> Super Search Başlat
+                    </button>
+                </div>
+                <div id="supersearchResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Ad Soyad Sorgu Page -->

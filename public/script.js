@@ -2109,4 +2109,428 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 10);
         });
     }
+
+    // Super Search input setup
+    const superSearchInput = document.getElementById('superSearchInput');
+    if (superSearchInput) {
+        superSearchInput.addEventListener('input', handleSuperSearchInput);
+        superSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSuperSearch();
+            }
+        });
+    }
 });
+
+// Super Search Functions
+function handleSuperSearchInput() {
+    const input = document.getElementById('superSearchInput');
+    const value = input.value.trim();
+    const detectedTypesContainer = document.getElementById('detectedTypes');
+    const suggestionsContainer = document.getElementById('searchSuggestions');
+    
+    if (!value) {
+        detectedTypesContainer.innerHTML = '';
+        suggestionsContainer.style.display = 'none';
+        return;
+    }
+    
+    const detectedTypes = detectInputType(value);
+    displayDetectedTypes(detectedTypes);
+    showSearchSuggestions(value, detectedTypes);
+}
+
+function detectInputType(input) {
+    const types = [];
+    const cleanInput = input.replace(/\s/g, '');
+    
+    // TC Kimlik No detection
+    if (/^[0-9]{11}$/.test(cleanInput)) {
+        types.push({ type: 'tc', label: 'TC Kimlik', confidence: 95 });
+    }
+    
+    // GSM detection
+    if (/^[0-9]{10}$/.test(cleanInput) || /^(\+90|0)?5[0-9]{9}$/.test(cleanInput)) {
+        types.push({ type: 'gsm', label: 'GSM Numarası', confidence: 90 });
+    }
+    
+    // IBAN detection
+    if (/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanInput.toUpperCase()) && cleanInput.length >= 15 && cleanInput.length <= 34) {
+        types.push({ type: 'iban', label: 'IBAN', confidence: 85 });
+    }
+    
+    // IP Address detection
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+    if (ipv4Regex.test(cleanInput) || ipv6Regex.test(cleanInput)) {
+        types.push({ type: 'ip', label: 'IP Adresi', confidence: 95 });
+    }
+    
+    // Name detection (Turkish characters)
+    if (/^[a-zA-ZçğıöşüÇĞIİÖŞÜ\s]{2,}$/.test(input) && input.includes(' ')) {
+        const parts = input.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            types.push({ type: 'adsoyad', label: 'Ad Soyad', confidence: 70 });
+        }
+    }
+    
+    // Email detection
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) {
+        types.push({ type: 'email', label: 'E-posta', confidence: 95 });
+    }
+    
+    // Phone number detection (various formats)
+    if (/^(\+90|0)?[0-9\s\-\(\)]{10,}$/.test(input)) {
+        types.push({ type: 'phone', label: 'Telefon', confidence: 60 });
+    }
+    
+    return types.sort((a, b) => b.confidence - a.confidence);
+}
+
+function displayDetectedTypes(types) {
+    const container = document.getElementById('detectedTypes');
+    
+    if (types.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = types.map(type => 
+        `<div class="detected-type">${type.label} (%${type.confidence})</div>`
+    ).join('');
+}
+
+function showSearchSuggestions(input, detectedTypes) {
+    const container = document.getElementById('searchSuggestions');
+    
+    if (detectedTypes.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    const suggestions = [];
+    
+    detectedTypes.forEach(type => {
+        switch (type.type) {
+            case 'tc':
+                suggestions.push(`TC Kimlik sorgusu: ${input}`);
+                suggestions.push(`Adres sorgusu: ${input}`);
+                suggestions.push(`İşyeri sorgusu: ${input}`);
+                suggestions.push(`Sulale sorgusu: ${input}`);
+                suggestions.push(`TC → GSM sorgusu: ${input}`);
+                break;
+            case 'gsm':
+                suggestions.push(`GSM → TC sorgusu: ${input}`);
+                break;
+            case 'iban':
+                suggestions.push(`IBAN doğrulama: ${input}`);
+                break;
+            case 'ip':
+                suggestions.push(`IP analizi: ${input}`);
+                break;
+            case 'adsoyad':
+                const parts = input.trim().split(/\s+/);
+                if (parts.length >= 2) {
+                    suggestions.push(`Ad Soyad sorgusu: ${parts[0]} ${parts[1]}`);
+                }
+                break;
+        }
+    });
+    
+    if (suggestions.length > 0) {
+        container.innerHTML = suggestions.slice(0, 5).map(suggestion => 
+            `<div class="suggestion-item" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
+        ).join('');
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function selectSuggestion(suggestion) {
+    document.getElementById('superSearchInput').value = suggestion.split(': ')[1] || suggestion;
+    document.getElementById('searchSuggestions').style.display = 'none';
+    handleSuperSearchInput();
+}
+
+async function performSuperSearch() {
+    const input = document.getElementById('superSearchInput').value.trim();
+    const autoDetect = document.getElementById('autoDetect').checked;
+    const multiSearch = document.getElementById('multiSearch').checked;
+    const deepSearch = document.getElementById('deepSearch').checked;
+    
+    if (!input) {
+        showToast('Arama terimi girin!', 'error');
+        return;
+    }
+    
+    const detectedTypes = detectInputType(input);
+    
+    if (detectedTypes.length === 0) {
+        showToast('Girilen veri türü algılanamadı!', 'error');
+        return;
+    }
+    
+    showSuperSearchLoading();
+    
+    const results = {};
+    const searchPromises = [];
+    
+    // Determine which searches to perform
+    const searchTypes = multiSearch ? detectedTypes : [detectedTypes[0]];
+    
+    for (const typeInfo of searchTypes) {
+        const { type } = typeInfo;
+        
+        switch (type) {
+            case 'tc':
+                if (multiSearch || deepSearch) {
+                    searchPromises.push(performTCSearch(input, results));
+                    searchPromises.push(performAdresSearch(input, results));
+                    searchPromises.push(performIsyeriSearch(input, results));
+                    searchPromises.push(performSulaleSearch(input, results));
+                    searchPromises.push(performTcGsmSearch(input, results));
+                } else {
+                    searchPromises.push(performTCSearch(input, results));
+                }
+                break;
+            case 'gsm':
+                searchPromises.push(performGsmTcSearch(input, results));
+                break;
+            case 'iban':
+                searchPromises.push(performIBANSearch(input, results));
+                break;
+            case 'ip':
+                searchPromises.push(performIPSearch(input, results));
+                break;
+            case 'adsoyad':
+                searchPromises.push(performAdSoyadSearch(input, results));
+                break;
+        }
+    }
+    
+    // Wait for all searches to complete
+    await Promise.allSettled(searchPromises);
+    
+    displaySuperSearchResults(results, input);
+}
+
+async function performTCSearch(tc, results) {
+    try {
+        results.tc = { status: 'loading', type: 'TC Kimlik Sorgu' };
+        const data = await makeApiRequest('tc', { tc });
+        results.tc = { status: 'success', type: 'TC Kimlik Sorgu', data };
+    } catch (error) {
+        results.tc = { status: 'error', type: 'TC Kimlik Sorgu', error: error.message };
+    }
+}
+
+async function performAdresSearch(tc, results) {
+    try {
+        results.adres = { status: 'loading', type: 'Adres Sorgu' };
+        const data = await makeApiRequest('adres', { tc });
+        results.adres = { status: 'success', type: 'Adres Sorgu', data };
+    } catch (error) {
+        results.adres = { status: 'error', type: 'Adres Sorgu', error: error.message };
+    }
+}
+
+async function performIsyeriSearch(tc, results) {
+    try {
+        results.isyeri = { status: 'loading', type: 'İşyeri Sorgu' };
+        const data = await makeApiRequest('isyeri', { tc });
+        results.isyeri = { status: 'success', type: 'İşyeri Sorgu', data };
+    } catch (error) {
+        results.isyeri = { status: 'error', type: 'İşyeri Sorgu', error: error.message };
+    }
+}
+
+async function performSulaleSearch(tc, results) {
+    try {
+        results.sulale = { status: 'loading', type: 'Sulale Sorgu' };
+        const data = await makeApiRequest('sulale', { tc });
+        results.sulale = { status: 'success', type: 'Sulale Sorgu', data };
+    } catch (error) {
+        results.sulale = { status: 'error', type: 'Sulale Sorgu', error: error.message };
+    }
+}
+
+async function performTcGsmSearch(tc, results) {
+    try {
+        results.tcgsm = { status: 'loading', type: 'TC → GSM Sorgu' };
+        const data = await makeApiRequest('tcgsm', { tc });
+        results.tcgsm = { status: 'success', type: 'TC → GSM Sorgu', data };
+    } catch (error) {
+        results.tcgsm = { status: 'error', type: 'TC → GSM Sorgu', error: error.message };
+    }
+}
+
+async function performGsmTcSearch(gsm, results) {
+    try {
+        results.gsmtc = { status: 'loading', type: 'GSM → TC Sorgu' };
+        const data = await makeApiRequest('gsmtc', { gsm });
+        results.gsmtc = { status: 'success', type: 'GSM → TC Sorgu', data };
+    } catch (error) {
+        results.gsmtc = { status: 'error', type: 'GSM → TC Sorgu', error: error.message };
+    }
+}
+
+async function performIBANSearch(iban, results) {
+    try {
+        results.iban = { status: 'loading', type: 'IBAN Doğrulama' };
+        const data = await makeApiRequest('iban', { iban });
+        results.iban = { status: 'success', type: 'IBAN Doğrulama', data };
+    } catch (error) {
+        results.iban = { status: 'error', type: 'IBAN Doğrulama', error: error.message };
+    }
+}
+
+async function performIPSearch(ip, results) {
+    try {
+        results.ip = { status: 'loading', type: 'IP Analizi' };
+        const data = await makeApiRequest('iplookup', { ip });
+        results.ip = { status: 'success', type: 'IP Analizi', data };
+    } catch (error) {
+        results.ip = { status: 'error', type: 'IP Analizi', error: error.message };
+    }
+}
+
+async function performAdSoyadSearch(input, results) {
+    try {
+        const parts = input.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            results.adsoyad = { status: 'loading', type: 'Ad Soyad Sorgu' };
+            const data = await makeApiRequest('adsoyad', { adi: parts[0], soyadi: parts[1] });
+            results.adsoyad = { status: 'success', type: 'Ad Soyad Sorgu', data };
+        }
+    } catch (error) {
+        results.adsoyad = { status: 'error', type: 'Ad Soyad Sorgu', error: error.message };
+    }
+}
+
+function showSuperSearchLoading() {
+    const container = document.getElementById('supersearchResults');
+    container.innerHTML = `
+        <div class="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Super Search yapılıyor...</div>
+        </div>
+    `;
+}
+
+function displaySuperSearchResults(results, searchTerm) {
+    const container = document.getElementById('supersearchResults');
+    
+    if (Object.keys(results).length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                <h3>Sonuç Bulunamadı</h3>
+                <p>Arama terimi için sonuç bulunamadı.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="super-results-header">
+            <h3><i class="fas fa-search-plus"></i> Super Search Sonuçları: "${searchTerm}"</h3>
+            <div class="results-summary">
+                ${Object.keys(results).length} farklı sorgu türü çalıştırıldı
+            </div>
+        </div>
+        <div class="super-results-container">
+    `;
+    
+    Object.entries(results).forEach(([key, result]) => {
+        html += `
+            <div class="result-section">
+                <h4>
+                    <i class="fas fa-${getIconForType(key)}"></i>
+                    ${result.type}
+                    <span class="result-status status-${result.status}">
+                        ${result.status === 'success' ? 'Başarılı' : result.status === 'error' ? 'Hata' : 'Yükleniyor'}
+                    </span>
+                </h4>
+                <div class="result-data">
+                    ${formatResultData(result)}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Add action buttons
+    addActionButtons(container, results, 'Super Search');
+}
+
+function getIconForType(type) {
+    const icons = {
+        'tc': 'id-card',
+        'adres': 'map-marker-alt',
+        'isyeri': 'building',
+        'sulale': 'sitemap',
+        'tcgsm': 'mobile-alt',
+        'gsmtc': 'phone',
+        'iban': 'university',
+        'ip': 'globe',
+        'adsoyad': 'users'
+    };
+    return icons[type] || 'search';
+}
+
+function formatResultData(result) {
+    if (result.status === 'error') {
+        return `<div class="error-message">${result.error}</div>`;
+    }
+    
+    if (result.status === 'loading') {
+        return '<div class="loading-text">Yükleniyor...</div>';
+    }
+    
+    if (!result.data) {
+        return '<div class="no-data">Veri bulunamadı</div>';
+    }
+    
+    // Handle different data formats
+    let data = result.data;
+    if (data.success && data.data && Array.isArray(data.data)) {
+        data = data.data;
+    } else if (!Array.isArray(data)) {
+        data = [data];
+    }
+    
+    if (data.length === 0) {
+        return '<div class="no-data">Sonuç bulunamadı</div>';
+    }
+    
+    // Show first few results
+    const displayData = data.slice(0, 3);
+    let html = '';
+    
+    displayData.forEach((item, index) => {
+        html += `<div class="data-record">`;
+        Object.entries(item).forEach(([key, value]) => {
+            if (key !== '_warning' && key !== '_apiStatus' && key !== '_timestamp' && value) {
+                html += `
+                    <div class="data-item">
+                        <span class="data-label">${key}:</span>
+                        <span class="data-value">${value}</span>
+                    </div>
+                `;
+            }
+        });
+        html += `</div>`;
+        if (index < displayData.length - 1) {
+            html += '<hr style="border-color: #444; margin: 10px 0;">';
+        }
+    });
+    
+    if (data.length > 3) {
+        html += `<div class="more-results">... ve ${data.length - 3} sonuç daha</div>`;
+    }
+    
+    return html;
+}
