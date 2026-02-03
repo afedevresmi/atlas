@@ -1612,3 +1612,526 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// MAC Address Analysis Functions
+async function queryMAC() {
+    const mac = document.getElementById('macInput').value.trim();
+    
+    if (!mac) {
+        showToast('MAC adresi girin!', 'error');
+        return;
+    }
+    
+    showLoading('macResults');
+    
+    const data = await makeApiRequest('mac', { mac });
+    if (data) {
+        displayMACResults('macResults', data);
+        showToast('MAC analizi tamamlandı!', 'success');
+    }
+}
+
+function setExampleMAC(mac) {
+    document.getElementById('macInput').value = mac;
+}
+
+function displayMACResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>MAC Analizi Başarısız</h3>
+                <p>${data?.details || 'MAC adresi analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #795548;">
+            <h4><i class="fas fa-network-wired"></i> MAC Durumu</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli MAC' : 'Geçersiz MAC'}
+                </span>
+            </div>
+        </div>
+    `;
+    
+    if (data.isValid && data.format) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #795548;">
+                <h4><i class="fas fa-code"></i> Format Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Orijinal', data.format.original)}
+                    ${createAnalysisResultItem('Temizlenmiş', data.format.clean)}
+                    ${createAnalysisResultItem('Colon Format', data.format.colon)}
+                    ${createAnalysisResultItem('Dash Format', data.format.dash)}
+                    ${createAnalysisResultItem('Dot Format', data.format.dot)}
+                </div>
+            </div>
+            
+            <div class="analysis-result-section" style="--accent-color: #795548;">
+                <h4><i class="fas fa-industry"></i> Üretici Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Üretici', data.vendor.vendor)}
+                    ${createAnalysisResultItem('Ülke', data.vendor.country)}
+                </div>
+            </div>
+            
+            <div class="analysis-result-section" style="--accent-color: #795548;">
+                <h4><i class="fas fa-info-circle"></i> Tip Bilgileri</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Unicast', data.type.isUnicast ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Multicast', data.type.isMulticast ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Yerel Yönetimli', data.type.isLocallyAdministered ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Evrensel Yönetimli', data.type.isUniversallyAdministered ? 'Evet' : 'Hayır')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'MAC Analysis');
+}
+
+// Hash Analysis Functions
+async function queryHash() {
+    const hash = document.getElementById('hashInput').value.trim();
+    const type = document.getElementById('hashType').value;
+    
+    if (!hash) {
+        showToast('Hash değeri girin!', 'error');
+        return;
+    }
+    
+    showLoading('hashResults');
+    
+    const data = await makeApiRequest('hash', { hash, type });
+    if (data) {
+        displayHashResults('hashResults', data);
+        showToast('Hash analizi tamamlandı!', 'success');
+    }
+}
+
+function setExampleHash(hash) {
+    document.getElementById('hashInput').value = hash;
+}
+
+function displayHashResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Hash Analizi Başarısız</h3>
+                <p>${data?.details || 'Hash değeri analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #e91e63;">
+            <h4><i class="fas fa-fingerprint"></i> Hash Bilgileri</h4>
+            <div class="formatted-display">${data.hash}</div>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.analysis.isValid ? 'status-valid' : 'status-invalid'}">
+                    <i class="fas fa-${data.analysis.isValid ? 'check' : 'times'}"></i>
+                    ${data.analysis.isValid ? 'Geçerli Hash' : 'Geçersiz Hash'}
+                </span>
+            </div>
+        </div>
+    `;
+    
+    if (data.analysis) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #e91e63;">
+                <h4><i class="fas fa-info-circle"></i> Analiz Sonuçları</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Hash Tipi', data.analysis.detectedType)}
+                    ${createAnalysisResultItem('Uzunluk', data.analysis.length + ' karakter')}
+                    ${createAnalysisResultItem('Karakter Seti', data.analysis.charset)}
+                    ${createAnalysisResultItem('Entropi', data.analysis.entropy)}
+                </div>
+            </div>
+        `;
+    }
+    
+    if (data.lookup && data.lookup.found) {
+        html += `
+            <div class="analysis-result-section" style="--accent-color: #4caf50;">
+                <h4><i class="fas fa-search"></i> Hash Lookup</h4>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Bulunan Metin', data.lookup.plaintext)}
+                    ${createAnalysisResultItem('Kaynak', data.lookup.source)}
+                    ${createAnalysisResultItem('Güven', data.lookup.confidence + '%')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Hash Analysis');
+}
+
+// Base64 Functions
+async function encodeBase64() {
+    const text = document.getElementById('base64Input').value.trim();
+    
+    if (!text) {
+        showToast('Çevrilecek metin girin!', 'error');
+        return;
+    }
+    
+    showLoading('base64Results');
+    
+    const data = await makeApiRequestPost('base64', { text, operation: 'encode' });
+    if (data) {
+        displayBase64Results('base64Results', data);
+        showToast('Base64 kodlama tamamlandı!', 'success');
+    }
+}
+
+async function decodeBase64() {
+    const text = document.getElementById('base64Input').value.trim();
+    
+    if (!text) {
+        showToast('Çözülecek Base64 metni girin!', 'error');
+        return;
+    }
+    
+    showLoading('base64Results');
+    
+    const data = await makeApiRequestPost('base64', { text, operation: 'decode' });
+    if (data) {
+        displayBase64Results('base64Results', data);
+        showToast('Base64 çözme tamamlandı!', 'success');
+    }
+}
+
+function setExampleBase64(text) {
+    document.getElementById('base64Input').value = text;
+}
+
+function displayBase64Results(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Base64 İşlemi Başarısız</h3>
+                <p>${data?.details || 'Base64 işlemi gerçekleştirilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #3f51b5;">
+            <h4><i class="fas fa-code"></i> ${data.operation === 'encode' ? 'Kodlama' : 'Çözme'} Sonucu</h4>
+            <div class="analysis-result-grid">
+                ${createAnalysisResultItem('İşlem', data.operation === 'encode' ? 'Base64 Kodlama' : 'Base64 Çözme')}
+                ${createAnalysisResultItem('Giriş Uzunluğu', data.input.length + ' karakter')}
+                ${createAnalysisResultItem('Çıkış Uzunluğu', data.result.length + ' karakter')}
+            </div>
+            <div style="margin: 20px 0;">
+                <h5 style="color: #3f51b5; margin-bottom: 10px;">Sonuç:</h5>
+                <div class="formatted-display" style="word-break: break-all;">${data.result}</div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Base64 Conversion');
+}
+
+// QR Code Functions
+async function generateQR() {
+    const text = document.getElementById('qrInput').value.trim();
+    const size = document.getElementById('qrSize').value;
+    const format = document.getElementById('qrFormat').value;
+    
+    if (!text) {
+        showToast('QR koda dönüştürülecek metin girin!', 'error');
+        return;
+    }
+    
+    showLoading('qrResults');
+    
+    const data = await makeApiRequestPost('qr', { text, size, format });
+    if (data) {
+        displayQRResults('qrResults', data);
+        showToast('QR kod oluşturuldu!', 'success');
+    }
+}
+
+function setExampleQR(text) {
+    document.getElementById('qrInput').value = text;
+}
+
+function displayQRResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>QR Kod Oluşturulamadı</h3>
+                <p>${data?.details || 'QR kod oluşturulamadı.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #8b4513;">
+            <h4><i class="fas fa-qrcode"></i> QR Kod Bilgileri</h4>
+            <div class="analysis-result-grid">
+                ${createAnalysisResultItem('Metin', data.text)}
+                ${createAnalysisResultItem('Boyut', data.size + 'x' + data.size)}
+                ${createAnalysisResultItem('Format', data.format.toUpperCase())}
+            </div>
+        </div>
+        
+        <div class="qr-result-display">
+            <h5 style="color: #8b4513; margin-bottom: 20px;">
+                <i class="fas fa-qrcode"></i> Oluşturulan QR Kod
+            </h5>
+            <img src="${data.qrUrl}" alt="QR Code" style="max-width: ${data.size}px;">
+            <div style="margin-top: 20px;">
+                <a href="${data.downloadUrl}" target="_blank" class="query-btn" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-download"></i> QR Kodu İndir
+                </a>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'QR Code');
+}
+
+// Password Security Analysis Functions
+async function analyzePassword() {
+    const password = document.getElementById('passwordInput').value;
+    
+    if (!password) {
+        showToast('Analiz edilecek şifre girin!', 'error');
+        return;
+    }
+    
+    showLoading('passwordResults');
+    
+    const data = await makeApiRequestPost('password', { password });
+    if (data) {
+        displayPasswordResults('passwordResults', data);
+        showToast('Şifre analizi tamamlandı!', 'success');
+    }
+}
+
+function setExamplePassword(password) {
+    document.getElementById('passwordInput').value = password;
+}
+
+function togglePasswordVisibility() {
+    const input = document.getElementById('passwordInput');
+    const icon = document.getElementById('passwordToggleIcon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+function displayPasswordResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>Şifre Analizi Başarısız</h3>
+                <p>${data?.details || 'Şifre analiz edilemedi.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const strengthClass = data.level.toLowerCase().replace(' ', '-');
+    
+    let html = `
+        <div class="analysis-result-section" style="--accent-color: #f44336;">
+            <h4><i class="fas fa-shield-alt"></i> Şifre Güvenlik Analizi</h4>
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="status-badge ${data.score >= 70 ? 'status-valid' : data.score >= 40 ? 'status-warning' : 'status-invalid'}">
+                    <i class="fas fa-shield-alt"></i>
+                    ${data.level} (${data.score}/100)
+                </span>
+            </div>
+            <div class="password-strength-meter">
+                <div class="password-strength-fill strength-${strengthClass}" style="width: ${data.score}%;"></div>
+            </div>
+        </div>
+        
+        <div class="analysis-result-section" style="--accent-color: #f44336;">
+            <h4><i class="fas fa-info-circle"></i> Şifre Özellikleri</h4>
+            <div class="analysis-result-grid">
+                ${createAnalysisResultItem('Uzunluk', data.length + ' karakter')}
+                ${createAnalysisResultItem('Küçük Harf', data.strength.hasLowercase ? 'Var' : 'Yok')}
+                ${createAnalysisResultItem('Büyük Harf', data.strength.hasUppercase ? 'Var' : 'Yok')}
+                ${createAnalysisResultItem('Rakam', data.strength.hasNumbers ? 'Var' : 'Yok')}
+                ${createAnalysisResultItem('Özel Karakter', data.strength.hasSpecialChars ? 'Var' : 'Yok')}
+                ${createAnalysisResultItem('Karakter Çeşitliliği', data.strength.characterSets + '/4')}
+                ${createAnalysisResultItem('Yaygın Şifre', data.isCommon ? 'Evet' : 'Hayır')}
+            </div>
+        </div>
+    `;
+    
+    if (data.recommendations && data.recommendations.length > 0) {
+        html += `
+            <div class="password-recommendations">
+                <h5><i class="fas fa-lightbulb"></i> Güvenlik Önerileri</h5>
+                <ul>
+                    ${data.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Password Analysis');
+}
+
+// Enhanced API request function for POST requests
+async function makeApiRequestPost(endpoint, data) {
+    try {
+        const response = await fetch(`/api/${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            return result;
+        } else {
+            showToast(result.error || 'API isteği başarısız!', 'error');
+            return null;
+        }
+    } catch (error) {
+        showToast('Bağlantı hatası!', 'error');
+        return null;
+    }
+}
+
+// Enhanced IP display function
+function displayEnhancedIPResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>IP Sorgusu Başarısız</h3>
+                <p>IP adresi sorgulanamadı veya geçersiz.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="enhanced-ip-section">
+            <h4><i class="fas fa-database"></i> Gelişmiş IP Analizi</h4>
+            <p>${data.sources} farklı API'den birleştirilmiş sonuç | Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
+            <div class="confidence-meter">
+                <span>Güvenilirlik:</span>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" style="width: ${data.confidence}%;"></div>
+                </div>
+                <span>${data.confidence}%</span>
+            </div>
+        </div>
+    `;
+    
+    // Add map integration if coordinates available
+    if (data.data.location && data.data.location.latitude && data.data.location.longitude) {
+        const mapUrl = `https://www.google.com/maps?q=${data.data.location.latitude},${data.data.location.longitude}`;
+        html += `
+            <div class="map-container">
+                <h5><i class="fas fa-map-marker-alt"></i> Konum Haritası</h5>
+                <a href="${mapUrl}" target="_blank" class="map-link">
+                    <i class="fas fa-external-link-alt"></i>
+                    Google Maps'te Görüntüle
+                </a>
+            </div>
+        `;
+    }
+    
+    // Enhanced security section with risk score
+    if (data.data.security) {
+        const riskLevel = data.data.security.riskScore > 50 ? 'high' : data.data.security.riskScore > 25 ? 'medium' : 'low';
+        html += `
+            <div class="enhanced-ip-section">
+                <h4><i class="fas fa-shield-alt"></i> Gelişmiş Güvenlik Analizi</h4>
+                <div style="margin: 15px 0;">
+                    <span class="risk-indicator risk-${riskLevel}">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Risk Skoru: ${data.data.security.riskScore}/100
+                    </span>
+                </div>
+                <div class="analysis-result-grid">
+                    ${createAnalysisResultItem('Proxy', data.data.security.proxy ? 'Tespit Edildi' : 'Tespit Edilmedi')}
+                    ${createAnalysisResultItem('VPN', data.data.security.vpn ? 'Tespit Edildi' : 'Tespit Edilmedi')}
+                    ${createAnalysisResultItem('Tor', data.data.security.tor ? 'Tespit Edildi' : 'Tespit Edilmedi')}
+                    ${createAnalysisResultItem('Hosting', data.data.security.hosting ? 'Evet' : 'Hayır')}
+                    ${createAnalysisResultItem('Blacklist Durumu', data.data.security.blacklist?.reputation || 'Temiz')}
+                    ${createAnalysisResultItem('Tehdit Seviyesi', data.data.security.threatIntel?.threatLevel || 'Düşük')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Continue with existing IP display logic...
+    html += displayIPResults(containerId, data, false); // false = don't replace, append
+    
+    container.innerHTML = html;
+    addActionButtons(container, data, 'Enhanced IP Lookup');
+}
+
+// Input formatting enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    // MAC input formatting
+    const macInput = document.getElementById('macInput');
+    if (macInput) {
+        macInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+            if (value.length <= 12) {
+                // Format as XX:XX:XX:XX:XX:XX
+                value = value.replace(/(.{2})/g, '$1:').slice(0, -1);
+                e.target.value = value;
+            }
+        });
+    }
+    
+    // Hash input formatting
+    const hashInput = document.getElementById('hashInput');
+    if (hashInput) {
+        hashInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^a-fA-F0-9]/g, '').toLowerCase();
+            if (value.length <= 128) {
+                e.target.value = value;
+            }
+        });
+    }
+});

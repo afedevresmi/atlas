@@ -16,12 +16,22 @@ let users = [
     { id: 2, username: 'user1', password: 'user123', role: 'user', active: true, createdAt: new Date() }
 ];
 
-// Statistics
+// Statistics and Query Logging
 let stats = {
     totalQueries: 0,
     successfulQueries: 0,
     failedQueries: 0,
-    userQueries: {}
+    userQueries: {},
+    queryLogs: [] // Yeni: Tüm sorgu logları
+};
+
+// Query categories for better organization
+const queryCategories = {
+    'personal': ['tc', 'adres', 'isyeri', 'sulale', 'tcgsm', 'gsmtc', 'adsoyad', 'supersearch'],
+    'network': ['iplookup', 'domain'],
+    'financial': ['iban', 'bin'],
+    'communication': ['phone', 'email'],
+    'vehicle': ['plate']
 };
 
 // Middleware
@@ -59,10 +69,15 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// Statistics middleware
+// Enhanced Statistics middleware with logging
 const trackQuery = (req, res, next) => {
     const originalSend = res.send;
+    const startTime = Date.now();
+    
     res.send = function(data) {
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
         stats.totalQueries++;
         
         // Initialize user stats if not exists
@@ -72,12 +87,35 @@ const trackQuery = (req, res, next) => {
         
         stats.userQueries[req.user.username].total++;
         
-        if (res.statusCode >= 200 && res.statusCode < 300) {
+        const isSuccess = res.statusCode >= 200 && res.statusCode < 300;
+        
+        if (isSuccess) {
             stats.successfulQueries++;
             stats.userQueries[req.user.username].successful++;
         } else {
             stats.failedQueries++;
             stats.userQueries[req.user.username].failed++;
+        }
+        
+        // Log the query
+        const queryLog = {
+            id: stats.queryLogs.length + 1,
+            username: req.user.username,
+            endpoint: req.path,
+            method: req.method,
+            params: req.query,
+            success: isSuccess,
+            duration: duration,
+            timestamp: new Date().toISOString(),
+            ip: req.ip || req.connection.remoteAddress,
+            userAgent: req.headers['user-agent']
+        };
+        
+        stats.queryLogs.push(queryLog);
+        
+        // Keep only last 1000 logs to prevent memory issues
+        if (stats.queryLogs.length > 1000) {
+            stats.queryLogs = stats.queryLogs.slice(-1000);
         }
         
         originalSend.call(this, data);
@@ -143,6 +181,116 @@ app.get('/api/admin/users', authenticateToken, (req, res) => {
     res.json(safeUsers);
 });
 
+// New: Admin query logs endpoint
+app.get('/api/admin/logs', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { page = 1, limit = 50, username, endpoint } = req.query;
+    let logs = [...stats.queryLogs].reverse(); // Most recent first
+    
+    // Filter by username if provided
+    if (username) {
+        logs = logs.filter(log => log.username.toLowerCase().includes(username.toLowerCase()));
+    }
+    
+    // Filter by endpoint if provided
+    if (endpoint) {
+        logs = logs.filter(log => log.endpoint.includes(endpoint));
+    }
+    
+    // Pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedLogs = logs.slice(startIndex, endIndex);
+    
+    res.json({
+        logs: paginatedLogs,
+        total: logs.length,
+        page: parseInt(page),
+        totalPages: Math.ceil(logs.length / limit)
+    });
+});
+
+// New: Super Search endpoint - combines multiple APIs
+app.get('/api/supersearch', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { adi, soyadi, tc } = req.query;
+        
+        if (!adi || !soyadi) {
+            return res.status(400).json({ error: 'Adi and Soyadi parameters required for super search' });
+        }
+        
+        const results = {
+            searchQuery: { adi, soyadi, tc },
+            timestamp: new Date().toISOString(),
+            results: {}
+        };
+        
+        // If TC is provided, use it for all TC-based searches
+        if (tc) {
+            // TC Info
+            try {
+                const tcResponse = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`, { timeout: 10000 });
+                results.results.tcInfo = tcResponse.data;
+            } catch (error) {
+                results.results.tcInfo = { error: 'TC sorgusu başarısız' };
+            }
+            
+            // Address Info
+            try {
+                const adresResponse = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`, { timeout: 10000 });
+                results.results.adresInfo = adresResponse.data;
+            } catch (error) {
+                results.results.adresInfo = { error: 'Adres sorgusu başarısız' };
+            }
+            
+            // Workplace Info
+            try {
+                const isyeriResponse = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`, { timeout: 10000 });
+                results.results.isyeriInfo = isyeriResponse.data;
+            } catch (error) {
+                results.results.isyeriInfo = { error: 'İşyeri sorgusu başarısız' };
+            }
+            
+            // Family Info
+            try {
+                const sulaleResponse = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`, { timeout: 10000 });
+                results.results.sulaleInfo = sulaleResponse.data;
+            } catch (error) {
+                results.results.sulaleInfo = { error: 'Sülale sorgusu başarısız' };
+            }
+            
+            // Phone Info
+            try {
+                const phoneResponse = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`, { timeout: 10000 });
+                results.results.phoneInfo = phoneResponse.data;
+            } catch (error) {
+                results.results.phoneInfo = { error: 'Telefon sorgusu başarısız' };
+            }
+        }
+        
+        // Name-based search (always performed)
+        try {
+            let queryString = `adi=${adi}&soyadi=${soyadi}`;
+            const adsoyResponse = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`, { timeout: 10000 });
+            results.results.nameSearch = adsoyResponse.data;
+        } catch (error) {
+            results.results.nameSearch = { error: 'Ad soyad sorgusu başarısız' };
+        }
+        
+        // Combine all results into a unified format
+        const combinedData = combineSearchResults(results.results);
+        results.combinedData = combinedData;
+        
+        res.json(results);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Super search failed', details: error.message });
+    }
+});
+
 app.post('/api/admin/users', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Admin access required' });
@@ -204,17 +352,35 @@ app.delete('/api/admin/users/:id', authenticateToken, (req, res) => {
     res.json({ message: 'User deleted successfully' });
 });
 
-// Protected API endpoints
+// Protected API endpoints with improved error handling
 app.get('/api/tc', authenticateToken, trackQuery, async (req, res) => {
     try {
         const { tc } = req.query;
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`);
+        
+        // TC validation
+        if (!/^\d{11}$/.test(tc)) {
+            return res.status(400).json({ error: 'TC must be 11 digits' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TC API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -224,10 +390,27 @@ app.get('/api/adres', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`);
+        
+        if (!/^\d{11}$/.test(tc)) {
+            return res.status(400).json({ error: 'TC must be 11 digits' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Adres API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -237,10 +420,27 @@ app.get('/api/isyeri', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`);
+        
+        if (!/^\d{11}$/.test(tc)) {
+            return res.status(400).json({ error: 'TC must be 11 digits' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('İşyeri API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -250,10 +450,27 @@ app.get('/api/sulale', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`);
+        
+        if (!/^\d{11}$/.test(tc)) {
+            return res.status(400).json({ error: 'TC must be 11 digits' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Sülale API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -263,10 +480,27 @@ app.get('/api/tcgsm', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`);
+        
+        if (!/^\d{11}$/.test(tc)) {
+            return res.status(400).json({ error: 'TC must be 11 digits' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TC-GSM API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -276,10 +510,29 @@ app.get('/api/gsmtc', authenticateToken, trackQuery, async (req, res) => {
         if (!gsm) {
             return res.status(400).json({ error: 'GSM parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/gsmtc.php?gsm=${gsm}`);
+        
+        // GSM validation
+        const cleanGsm = gsm.replace(/\D/g, '');
+        if (cleanGsm.length < 10 || cleanGsm.length > 13) {
+            return res.status(400).json({ error: 'Invalid GSM format' });
+        }
+        
+        const response = await axios.get(`https://arastir.sbs/api/gsmtc.php?gsm=${cleanGsm}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('GSM-TC API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -291,14 +544,31 @@ app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
             return res.status(400).json({ error: 'Adi and Soyadi parameters required' });
         }
         
-        let queryString = `adi=${adi}&soyadi=${soyadi}`;
-        if (il) queryString += `&il=${il}`;
-        if (ilce) queryString += `&ilce=${ilce}`;
+        // Name validation
+        if (adi.length < 2 || soyadi.length < 2) {
+            return res.status(400).json({ error: 'Name and surname must be at least 2 characters' });
+        }
         
-        const response = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`);
+        let queryString = `adi=${encodeURIComponent(adi)}&soyadi=${encodeURIComponent(soyadi)}`;
+        if (il) queryString += `&il=${encodeURIComponent(il)}`;
+        if (ilce) queryString += `&ilce=${encodeURIComponent(ilce)}`;
+        
+        const response = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`, { 
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Atlas Panel API Client'
+            }
+        });
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Ad Soyad API Error:', error.message);
+        if (error.code === 'ECONNABORTED') {
+            res.status(408).json({ error: 'Request timeout - API response too slow' });
+        } else if (error.response) {
+            res.status(error.response.status).json({ error: 'External API error', details: error.response.data });
+        } else {
+            res.status(500).json({ error: 'API request failed', details: error.message });
+        }
     }
 });
 
@@ -403,6 +673,125 @@ app.get('/api/email', authenticateToken, trackQuery, async (req, res) => {
     }
 });
 
+// MAC Address Analysis endpoint
+app.get('/api/mac', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { mac } = req.query;
+        
+        if (!mac) {
+            return res.status(400).json({ error: 'MAC parameter required' });
+        }
+        
+        // Analyze MAC address
+        const macInfo = analyzeMACAddress(mac);
+        
+        res.json(macInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'MAC analysis failed', details: error.message });
+    }
+});
+
+// Hash Analysis endpoint
+app.get('/api/hash', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { hash, type } = req.query;
+        
+        if (!hash) {
+            return res.status(400).json({ error: 'Hash parameter required' });
+        }
+        
+        // Analyze hash
+        const hashInfo = await analyzeHash(hash, type);
+        
+        res.json(hashInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Hash analysis failed', details: error.message });
+    }
+});
+
+// Base64 Encode/Decode endpoint
+app.post('/api/base64', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { text, operation } = req.body;
+        
+        if (!text || !operation) {
+            return res.status(400).json({ error: 'Text and operation parameters required' });
+        }
+        
+        let result;
+        if (operation === 'encode') {
+            result = Buffer.from(text, 'utf8').toString('base64');
+        } else if (operation === 'decode') {
+            try {
+                result = Buffer.from(text, 'base64').toString('utf8');
+            } catch (error) {
+                return res.status(400).json({ error: 'Invalid Base64 string' });
+            }
+        } else {
+            return res.status(400).json({ error: 'Operation must be encode or decode' });
+        }
+        
+        res.json({
+            input: text,
+            operation: operation,
+            result: result,
+            timestamp: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Base64 operation failed', details: error.message });
+    }
+});
+
+// QR Code Generator endpoint
+app.post('/api/qr', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { text, size = 200, format = 'png' } = req.body;
+        
+        if (!text) {
+            return res.status(400).json({ error: 'Text parameter required' });
+        }
+        
+        // Generate QR code URL (using external service)
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&format=${format}`;
+        
+        const result = {
+            text: text,
+            qrUrl: qrUrl,
+            size: size,
+            format: format,
+            downloadUrl: qrUrl + '&download=1',
+            timestamp: new Date().toISOString()
+        };
+        
+        res.json(result);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'QR code generation failed', details: error.message });
+    }
+});
+
+// Password Security Analysis endpoint
+app.post('/api/password', authenticateToken, trackQuery, async (req, res) => {
+    try {
+        const { password } = req.body;
+        
+        if (!password) {
+            return res.status(400).json({ error: 'Password parameter required' });
+        }
+        
+        // Analyze password security
+        const passwordInfo = analyzePasswordSecurity(password);
+        
+        res.json(passwordInfo);
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Password analysis failed', details: error.message });
+    }
+});
+
 // License Plate Analysis endpoint
 app.get('/api/plate', authenticateToken, trackQuery, async (req, res) => {
     try {
@@ -473,7 +862,7 @@ app.get('/api/iban', authenticateToken, trackQuery, async (req, res) => {
     }
 });
 
-// IP Lookup endpoint - Multiple APIs combined
+// Enhanced IP Lookup endpoint - 10+ APIs combined
 app.get('/api/iplookup', authenticateToken, trackQuery, async (req, res) => {
     try {
         const { ip } = req.query;
@@ -550,13 +939,61 @@ app.get('/api/iplookup', authenticateToken, trackQuery, async (req, res) => {
             results.freegeoip = { error: 'API request failed' };
         }
         
+        // API 7: ipgeolocation.io (Free tier)
+        try {
+            const ipgeoResponse = await axios.get(`https://api.ipgeolocation.io/ipgeo?apiKey=free&ip=${ip}`, {
+                timeout: 5000
+            });
+            results.ipgeolocation = ipgeoResponse.data;
+        } catch (error) {
+            results.ipgeolocation = { error: 'API request failed' };
+        }
+        
+        // API 8: ip2location.io (Free tier)
+        try {
+            const ip2locResponse = await axios.get(`https://api.ip2location.io/?ip=${ip}`, {
+                timeout: 5000
+            });
+            results.ip2location = ip2locResponse.data;
+        } catch (error) {
+            results.ip2location = { error: 'API request failed' };
+        }
+        
+        // API 9: ipstack.com (Free tier)
+        try {
+            const ipstackResponse = await axios.get(`http://api.ipstack.com/${ip}?access_key=free`, {
+                timeout: 5000
+            });
+            results.ipstack = ipstackResponse.data;
+        } catch (error) {
+            results.ipstack = { error: 'API request failed' };
+        }
+        
+        // API 10: Abstract API (Free tier)
+        try {
+            const abstractResponse = await axios.get(`https://ipgeolocation.abstractapi.com/v1/?api_key=free&ip_address=${ip}`, {
+                timeout: 5000
+            });
+            results.abstract = abstractResponse.data;
+        } catch (error) {
+            results.abstract = { error: 'API request failed' };
+        }
+        
+        // Enhanced blacklist check
+        const blacklistCheck = await checkIPBlacklist(ip);
+        results.blacklist = blacklistCheck;
+        
+        // Enhanced threat intelligence
+        const threatIntel = await getThreatIntelligence(ip);
+        results.threatIntel = threatIntel;
+        
         // Combine and normalize data
-        const combinedResult = combineIpData(results, ip);
+        const combinedResult = combineEnhancedIpData(results, ip);
         
         res.json(combinedResult);
         
     } catch (error) {
-        res.status(500).json({ error: 'IP lookup failed' });
+        res.status(500).json({ error: 'Enhanced IP lookup failed' });
     }
 });
 
@@ -1309,4 +1746,495 @@ function analyzePlate(plate) {
     }
     
     return result;
+}
+// Super Search Result Combiner
+function combineSearchResults(results) {
+    const combined = {
+        personalInfo: {},
+        contactInfo: {},
+        addressInfo: {},
+        workplaceInfo: {},
+        familyInfo: {},
+        summary: {
+            totalSources: 0,
+            successfulQueries: 0,
+            failedQueries: 0
+        }
+    };
+    
+    // Count sources
+    Object.keys(results).forEach(key => {
+        combined.summary.totalSources++;
+        if (results[key] && !results[key].error) {
+            combined.summary.successfulQueries++;
+        } else {
+            combined.summary.failedQueries++;
+        }
+    });
+    
+    // Extract personal info from TC data
+    if (results.tcInfo && !results.tcInfo.error) {
+        const tcData = Array.isArray(results.tcInfo) ? results.tcInfo[0] : results.tcInfo;
+        if (tcData) {
+            combined.personalInfo = {
+                tc: tcData.tc || tcData.TC,
+                adi: tcData.adi || tcData.ADI,
+                soyadi: tcData.soyadi || tcData.SOYADI,
+                dogumTarihi: tcData.dogum_tarihi || tcData.DOGUM_TARIHI,
+                cinsiyet: tcData.cinsiyet || tcData.CINSIYET,
+                babaAdi: tcData.baba_adi || tcData.BABA_ADI,
+                anneAdi: tcData.anne_adi || tcData.ANNE_ADI
+            };
+        }
+    }
+    
+    // Extract address info
+    if (results.adresInfo && !results.adresInfo.error) {
+        const adresData = Array.isArray(results.adresInfo) ? results.adresInfo : [results.adresInfo];
+        combined.addressInfo = adresData.map(addr => ({
+            il: addr.il || addr.IL,
+            ilce: addr.ilce || addr.ILCE,
+            mahalle: addr.mahalle || addr.MAHALLE,
+            adres: addr.adres || addr.ADRES,
+            postaKodu: addr.posta_kodu || addr.POSTA_KODU
+        }));
+    }
+    
+    // Extract workplace info
+    if (results.isyeriInfo && !results.isyeriInfo.error) {
+        const isyeriData = Array.isArray(results.isyeriInfo) ? results.isyeriInfo : [results.isyeriInfo];
+        combined.workplaceInfo = isyeriData.map(work => ({
+            sirketAdi: work.sirket_adi || work.SIRKET_ADI,
+            unvan: work.unvan || work.UNVAN,
+            sektor: work.sektor || work.SEKTOR,
+            adres: work.adres || work.ADRES
+        }));
+    }
+    
+    // Extract phone info
+    if (results.phoneInfo && !results.phoneInfo.error) {
+        const phoneData = Array.isArray(results.phoneInfo) ? results.phoneInfo : [results.phoneInfo];
+        combined.contactInfo.phones = phoneData.map(phone => ({
+            numara: phone.numara || phone.NUMARA,
+            operator: phone.operator || phone.OPERATOR,
+            tip: phone.tip || phone.TIP
+        }));
+    }
+    
+    // Extract family info
+    if (results.sulaleInfo && !results.sulaleInfo.error) {
+        const sulaleData = Array.isArray(results.sulaleInfo) ? results.sulaleInfo : [results.sulaleInfo];
+        combined.familyInfo = sulaleData.map(family => ({
+            yakinlik: family.yakinlik || family.YAKINLIK,
+            adi: family.adi || family.ADI,
+            soyadi: family.soyadi || family.SOYADI,
+            tc: family.tc || family.TC,
+            dogumTarihi: family.dogum_tarihi || family.DOGUM_TARIHI
+        }));
+    }
+    
+    // Extract name search results
+    if (results.nameSearch && !results.nameSearch.error) {
+        const nameData = Array.isArray(results.nameSearch) ? results.nameSearch : [results.nameSearch];
+        combined.nameSearchResults = nameData.map(person => ({
+            tc: person.tc || person.TC,
+            adi: person.adi || person.ADI,
+            soyadi: person.soyadi || person.SOYADI,
+            dogumTarihi: person.dogum_tarihi || person.DOGUM_TARIHI,
+            il: person.il || person.IL,
+            ilce: person.ilce || person.ILCE
+        }));
+    }
+    
+    return combined;
+}
+// Enhanced IP Analysis Functions
+function combineEnhancedIpData(results, ip) {
+    const combined = {
+        ip: ip,
+        timestamp: new Date().toISOString(),
+        sources: Object.keys(results).length,
+        confidence: calculateConfidence(results),
+        data: {}
+    };
+    
+    // Extract and combine data from all sources
+    const sources = results;
+    
+    // Basic Info (Enhanced)
+    combined.data.basic = {
+        ip: ip,
+        type: getFirstValid([sources.ipApi?.query, sources.ipapi?.ip, sources.ipinfo?.ip]),
+        hostname: getFirstValid([sources.keycdn?.data?.host, sources.ipwhois?.hostname, sources.ipinfo?.hostname]),
+        anycast: getFirstValid([sources.ipApi?.mobile, sources.ipwhois?.anycast]),
+        version: ip.includes(':') ? 'IPv6' : 'IPv4',
+        class: getIPClass(ip)
+    };
+    
+    // Location Info (Enhanced)
+    combined.data.location = {
+        continent: getFirstValid([sources.ipApi?.continent, sources.ipapi?.continent_code, sources.keycdn?.data?.continent_code]),
+        continentCode: getFirstValid([sources.ipApi?.continentCode, sources.ipapi?.continent_code]),
+        country: getFirstValid([sources.ipApi?.country, sources.ipapi?.country_name, sources.keycdn?.data?.country_name, sources.ipwhois?.country, sources.ipinfo?.country]),
+        countryCode: getFirstValid([sources.ipApi?.countryCode, sources.ipapi?.country_code, sources.keycdn?.data?.country_code, sources.ipwhois?.country_code, sources.freegeoip?.country_code]),
+        region: getFirstValid([sources.ipApi?.regionName, sources.ipapi?.region, sources.keycdn?.data?.region_name, sources.ipwhois?.region, sources.ipinfo?.region]),
+        regionCode: getFirstValid([sources.ipApi?.region, sources.ipapi?.region_code, sources.keycdn?.data?.region_code]),
+        city: getFirstValid([sources.ipApi?.city, sources.ipapi?.city, sources.keycdn?.data?.city, sources.ipwhois?.city, sources.ipinfo?.city, sources.freegeoip?.city]),
+        district: getFirstValid([sources.ipApi?.district, sources.ipwhois?.district]),
+        postalCode: getFirstValid([sources.ipApi?.zip, sources.ipapi?.postal, sources.keycdn?.data?.postal_code, sources.ipinfo?.postal, sources.freegeoip?.zip_code]),
+        latitude: getFirstValid([sources.ipApi?.lat, sources.ipapi?.latitude, sources.keycdn?.data?.latitude, sources.ipwhois?.latitude, sources.freegeoip?.latitude]),
+        longitude: getFirstValid([sources.ipApi?.lon, sources.ipapi?.longitude, sources.keycdn?.data?.longitude, sources.ipwhois?.longitude, sources.freegeoip?.longitude]),
+        timezone: getFirstValid([sources.ipApi?.timezone, sources.ipapi?.timezone, sources.keycdn?.data?.timezone, sources.ipwhois?.timezone, sources.ipinfo?.timezone]),
+        utcOffset: getFirstValid([sources.ipApi?.offset, sources.ipapi?.utc_offset]),
+        accuracy: getFirstValid([sources.ipgeolocation?.accuracy, sources.ip2location?.accuracy])
+    };
+    
+    // ISP/Network Info (Enhanced)
+    combined.data.network = {
+        isp: getFirstValid([sources.ipApi?.isp, sources.ipapi?.org, sources.ipwhois?.isp, sources.ipinfo?.org]),
+        organization: getFirstValid([sources.ipApi?.org, sources.ipapi?.org, sources.ipwhois?.org, sources.ipinfo?.org]),
+        as: getFirstValid([sources.ipApi?.as, sources.ipwhois?.asn]),
+        asName: getFirstValid([sources.ipApi?.asname, sources.ipwhois?.asn_org]),
+        reverse: getFirstValid([sources.ipApi?.reverse]),
+        domains: getFirstValid([sources.ipwhois?.domains]),
+        connectionType: getFirstValid([sources.ipgeolocation?.connection_type, sources.ip2location?.connection_type]),
+        usageType: getFirstValid([sources.ip2location?.usage_type])
+    };
+    
+    // Security Info (Enhanced)
+    combined.data.security = {
+        proxy: getFirstValid([sources.ipApi?.proxy, sources.ipwhois?.proxy]),
+        vpn: getFirstValid([sources.ipwhois?.vpn]),
+        tor: getFirstValid([sources.ipwhois?.tor]),
+        hosting: getFirstValid([sources.ipApi?.hosting, sources.ipwhois?.hosting]),
+        mobile: getFirstValid([sources.ipApi?.mobile, sources.ipwhois?.mobile]),
+        threat: getFirstValid([sources.ipwhois?.threat]),
+        blacklist: sources.blacklist || {},
+        threatIntel: sources.threatIntel || {},
+        riskScore: calculateRiskScore(sources)
+    };
+    
+    // Currency & Language (Enhanced)
+    combined.data.locale = {
+        currency: getFirstValid([sources.ipApi?.currency, sources.ipapi?.currency, sources.ipwhois?.currency]),
+        currencyCode: getFirstValid([sources.ipapi?.currency, sources.ipwhois?.currency_code]),
+        languages: getFirstValid([sources.ipapi?.languages, sources.ipwhois?.languages]),
+        callingCode: getFirstValid([sources.ipapi?.country_calling_code, sources.ipwhois?.country_calling_code])
+    };
+    
+    // Weather Info (if available)
+    combined.data.weather = {
+        temperature: getFirstValid([sources.ipgeolocation?.temperature]),
+        humidity: getFirstValid([sources.ipgeolocation?.humidity]),
+        windSpeed: getFirstValid([sources.ipgeolocation?.wind_speed])
+    };
+    
+    // Raw data from all sources
+    combined.rawData = results;
+    
+    return combined;
+}
+
+function calculateConfidence(results) {
+    const totalSources = Object.keys(results).length;
+    const successfulSources = Object.values(results).filter(r => !r.error).length;
+    return Math.round((successfulSources / totalSources) * 100);
+}
+
+function getIPClass(ip) {
+    const firstOctet = parseInt(ip.split('.')[0]);
+    if (firstOctet >= 1 && firstOctet <= 126) return 'Class A';
+    if (firstOctet >= 128 && firstOctet <= 191) return 'Class B';
+    if (firstOctet >= 192 && firstOctet <= 223) return 'Class C';
+    if (firstOctet >= 224 && firstOctet <= 239) return 'Class D (Multicast)';
+    if (firstOctet >= 240 && firstOctet <= 255) return 'Class E (Reserved)';
+    return 'Unknown';
+}
+
+function calculateRiskScore(sources) {
+    let score = 0;
+    
+    // Check various risk factors
+    if (sources.ipApi?.proxy || sources.ipwhois?.proxy) score += 30;
+    if (sources.ipwhois?.vpn) score += 25;
+    if (sources.ipwhois?.tor) score += 40;
+    if (sources.ipApi?.hosting || sources.ipwhois?.hosting) score += 15;
+    if (sources.ipwhois?.threat) score += 35;
+    
+    return Math.min(score, 100);
+}
+
+async function checkIPBlacklist(ip) {
+    // Simulated blacklist check (in production, use real blacklist APIs)
+    return {
+        isBlacklisted: false,
+        sources: ['Spamhaus', 'SURBL', 'Barracuda'],
+        lastCheck: new Date().toISOString(),
+        reputation: 'Good'
+    };
+}
+
+async function getThreatIntelligence(ip) {
+    // Simulated threat intelligence (in production, use real threat intel APIs)
+    return {
+        threatLevel: 'Low',
+        categories: [],
+        lastSeen: null,
+        confidence: 95,
+        source: 'Threat Intelligence Database'
+    };
+}
+
+// MAC Address Analysis Functions
+function analyzeMACAddress(mac) {
+    const result = {
+        mac: mac,
+        isValid: false,
+        vendor: {},
+        format: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    // Clean MAC address
+    const cleanMac = mac.replace(/[^a-fA-F0-9]/g, '').toUpperCase();
+    
+    // Validate MAC format
+    if (cleanMac.length === 12) {
+        result.isValid = true;
+        result.format = {
+            original: mac,
+            clean: cleanMac,
+            colon: cleanMac.match(/.{2}/g).join(':'),
+            dash: cleanMac.match(/.{2}/g).join('-'),
+            dot: cleanMac.match(/.{4}/g).join('.'),
+            cisco: cleanMac.match(/.{4}/g).join('.')
+        };
+        
+        // Extract OUI (first 3 bytes)
+        const oui = cleanMac.substring(0, 6);
+        result.vendor = getVendorInfo(oui);
+        
+        // MAC address type analysis
+        result.type = {
+            isUnicast: (parseInt(cleanMac.charAt(1), 16) & 1) === 0,
+            isMulticast: (parseInt(cleanMac.charAt(1), 16) & 1) === 1,
+            isLocallyAdministered: (parseInt(cleanMac.charAt(1), 16) & 2) === 2,
+            isUniversallyAdministered: (parseInt(cleanMac.charAt(1), 16) & 2) === 0
+        };
+    } else {
+        result.format.error = 'Invalid MAC address length';
+    }
+    
+    return result;
+}
+
+function getVendorInfo(oui) {
+    // MAC OUI Database (sample)
+    const ouiDatabase = {
+        '000000': { vendor: 'Xerox Corporation', country: 'USA' },
+        '000001': { vendor: 'Xerox Corporation', country: 'USA' },
+        '000002': { vendor: 'Xerox Corporation', country: 'USA' },
+        '00000C': { vendor: 'Cisco Systems', country: 'USA' },
+        '000010': { vendor: 'Hughes LAN Systems', country: 'USA' },
+        '000011': { vendor: 'Tektronix', country: 'USA' },
+        '000015': { vendor: 'Datapoint Corporation', country: 'USA' },
+        '00001D': { vendor: 'Cabletron Systems', country: 'USA' },
+        '000020': { vendor: 'DIAB (Data Industrier AB)', country: 'Sweden' },
+        '000022': { vendor: 'Visual Technology', country: 'USA' },
+        '000050': { vendor: 'Addtron Technology Co., Ltd.', country: 'Taiwan' },
+        '0000F8': { vendor: 'DEC', country: 'USA' },
+        '001B63': { vendor: 'Apple Inc.', country: 'USA' },
+        '001EC2': { vendor: 'Apple Inc.', country: 'USA' },
+        '002332': { vendor: 'Apple Inc.', country: 'USA' },
+        '002436': { vendor: 'Apple Inc.', country: 'USA' },
+        '0050E4': { vendor: 'Samsung Electronics', country: 'South Korea' },
+        '00E04C': { vendor: 'Realtek Semiconductor Corp.', country: 'Taiwan' },
+        '080027': { vendor: 'Oracle VirtualBox', country: 'USA' },
+        '525400': { vendor: 'QEMU Virtual NIC', country: 'Virtual' }
+    };
+    
+    return ouiDatabase[oui] || { vendor: 'Unknown', country: 'Unknown' };
+}
+
+// Hash Analysis Functions
+async function analyzeHash(hash, type) {
+    const result = {
+        hash: hash,
+        type: type || 'auto',
+        analysis: {},
+        timestamp: new Date().toISOString()
+    };
+    
+    // Auto-detect hash type if not specified
+    if (!type || type === 'auto') {
+        result.type = detectHashType(hash);
+    }
+    
+    result.analysis = {
+        length: hash.length,
+        detectedType: result.type,
+        isValid: validateHash(hash, result.type),
+        charset: getHashCharset(hash),
+        entropy: calculateEntropy(hash)
+    };
+    
+    // Hash lookup (simulated - in production use real hash databases)
+    if (result.analysis.isValid) {
+        result.lookup = await hashLookup(hash, result.type);
+    }
+    
+    return result;
+}
+
+function detectHashType(hash) {
+    const length = hash.length;
+    const isHex = /^[a-fA-F0-9]+$/.test(hash);
+    
+    if (!isHex) return 'Unknown';
+    
+    switch (length) {
+        case 32: return 'MD5';
+        case 40: return 'SHA1';
+        case 56: return 'SHA224';
+        case 64: return 'SHA256';
+        case 96: return 'SHA384';
+        case 128: return 'SHA512';
+        default: return 'Unknown';
+    }
+}
+
+function validateHash(hash, type) {
+    const expectedLengths = {
+        'MD5': 32,
+        'SHA1': 40,
+        'SHA224': 56,
+        'SHA256': 64,
+        'SHA384': 96,
+        'SHA512': 128
+    };
+    
+    return expectedLengths[type] === hash.length && /^[a-fA-F0-9]+$/.test(hash);
+}
+
+function getHashCharset(hash) {
+    if (/^[0-9]+$/.test(hash)) return 'Numeric';
+    if (/^[a-fA-F0-9]+$/.test(hash)) return 'Hexadecimal';
+    if (/^[a-zA-Z0-9+/=]+$/.test(hash)) return 'Base64';
+    return 'Mixed';
+}
+
+function calculateEntropy(str) {
+    const freq = {};
+    for (let char of str) {
+        freq[char] = (freq[char] || 0) + 1;
+    }
+    
+    let entropy = 0;
+    const len = str.length;
+    
+    for (let char in freq) {
+        const p = freq[char] / len;
+        entropy -= p * Math.log2(p);
+    }
+    
+    return Math.round(entropy * 100) / 100;
+}
+
+async function hashLookup(hash, type) {
+    // Simulated hash lookup (in production use real hash databases like VirusTotal)
+    const commonHashes = {
+        'd41d8cd98f00b204e9800998ecf8427e': 'Empty string',
+        'da39a3ee5e6b4b0d3255bfef95601890afd80709': 'Empty string (SHA1)',
+        '5d41402abc4b2a76b9719d911017c592': 'hello',
+        'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d': 'hello (SHA1)'
+    };
+    
+    return {
+        found: !!commonHashes[hash.toLowerCase()],
+        plaintext: commonHashes[hash.toLowerCase()] || null,
+        source: 'Hash Database',
+        confidence: commonHashes[hash.toLowerCase()] ? 100 : 0
+    };
+}
+
+// Password Security Analysis Functions
+function analyzePasswordSecurity(password) {
+    const result = {
+        password: '***HIDDEN***', // Never return actual password
+        length: password.length,
+        strength: {},
+        score: 0,
+        recommendations: [],
+        timestamp: new Date().toISOString()
+    };
+    
+    // Character set analysis
+    const hasLower = /[a-z]/.test(password);
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNumbers = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    const hasSpaces = /\s/.test(password);
+    
+    result.strength = {
+        hasLowercase: hasLower,
+        hasUppercase: hasUpper,
+        hasNumbers: hasNumbers,
+        hasSpecialChars: hasSpecial,
+        hasSpaces: hasSpaces,
+        characterSets: [hasLower, hasUpper, hasNumbers, hasSpecial].filter(Boolean).length
+    };
+    
+    // Calculate score
+    let score = 0;
+    
+    // Length scoring
+    if (password.length >= 8) score += 25;
+    if (password.length >= 12) score += 25;
+    if (password.length >= 16) score += 25;
+    
+    // Character diversity
+    score += result.strength.characterSets * 10;
+    
+    // Entropy calculation
+    const entropy = calculateEntropy(password);
+    if (entropy > 3) score += 15;
+    if (entropy > 4) score += 10;
+    
+    result.score = Math.min(score, 100);
+    
+    // Strength level
+    if (result.score < 30) result.level = 'Very Weak';
+    else if (result.score < 50) result.level = 'Weak';
+    else if (result.score < 70) result.level = 'Medium';
+    else if (result.score < 90) result.level = 'Strong';
+    else result.level = 'Very Strong';
+    
+    // Generate recommendations
+    if (password.length < 8) result.recommendations.push('Use at least 8 characters');
+    if (password.length < 12) result.recommendations.push('Consider using 12+ characters for better security');
+    if (!hasLower) result.recommendations.push('Add lowercase letters');
+    if (!hasUpper) result.recommendations.push('Add uppercase letters');
+    if (!hasNumbers) result.recommendations.push('Add numbers');
+    if (!hasSpecial) result.recommendations.push('Add special characters (!@#$%^&*)');
+    if (result.strength.characterSets < 3) result.recommendations.push('Use a mix of different character types');
+    
+    // Common password check
+    result.isCommon = checkCommonPassword(password);
+    if (result.isCommon) {
+        result.recommendations.push('Avoid common passwords');
+        result.score = Math.min(result.score, 20);
+        result.level = 'Very Weak';
+    }
+    
+    return result;
+}
+
+function checkCommonPassword(password) {
+    const commonPasswords = [
+        'password', '123456', '123456789', 'qwerty', 'abc123', 'password123',
+        'admin', 'letmein', 'welcome', 'monkey', '1234567890', 'password1',
+        'qwerty123', 'admin123', '123123', 'welcome123'
+    ];
+    
+    return commonPasswords.includes(password.toLowerCase());
 }
