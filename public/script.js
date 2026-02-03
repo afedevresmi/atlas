@@ -306,9 +306,13 @@ async function makeApiRequest(endpoint, params = {}) {
     const url = `/api/${endpoint}?${queryString}`;
     
     try {
+        console.log(`Making API request to: ${url}`);
+        
         const response = await fetch(url, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        
+        console.log(`API response status: ${response.status}`);
         
         if (response.status === 401 || response.status === 403) {
             showToast('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.', 'error');
@@ -317,16 +321,39 @@ async function makeApiRequest(endpoint, params = {}) {
         }
         
         const data = await response.json();
+        console.log('API response data:', data);
         
         if (response.ok) {
             // Refresh stats after successful query
             setTimeout(loadStats, 500);
             return data;
         } else {
-            throw new Error(data.error || 'API hatası');
+            // Enhanced error handling with user-friendly messages
+            let errorMessage = data.error || 'API hatası';
+            
+            if (data.suggestion) {
+                errorMessage += ` - ${data.suggestion}`;
+            }
+            
+            if (response.status === 408) {
+                errorMessage = 'API zaman aşımı - Lütfen tekrar deneyin';
+            } else if (response.status === 503) {
+                errorMessage = 'Harici servis geçici olarak kullanılamıyor - Lütfen daha sonra tekrar deneyin';
+            } else if (response.status >= 500) {
+                errorMessage = 'Sunucu hatası - Lütfen daha sonra tekrar deneyin';
+            }
+            
+            throw new Error(errorMessage);
         }
     } catch (error) {
-        showToast(`Hata: ${error.message}`, 'error');
+        console.error('API request failed:', error);
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            showToast('Bağlantı hatası - İnternet bağlantınızı kontrol edin', 'error');
+        } else {
+            showToast(`Hata: ${error.message}`, 'error');
+        }
+        
         return null;
     }
 }

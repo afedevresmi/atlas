@@ -10,6 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'atlas-panel-secret-key-2024';
 
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static('public'));
+
 // Users database (in production, use a real database)
 let users = [
     { id: 1, username: 'admin', password: 'atlas2024', role: 'admin', active: true, createdAt: new Date() },
@@ -24,10 +29,273 @@ let stats = {
     userQueries: {}
 };
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static('public'));
+// API Health Check
+let apiHealthStatus = {
+    lastCheck: null,
+    isHealthy: true,
+    errorCount: 0,
+    lastError: null
+};
+
+async function checkApiHealth() {
+    try {
+        const response = await axios.get('https://arastir.sbs/api/tc.php?tc=12345678901', {
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        apiHealthStatus.isHealthy = true;
+        apiHealthStatus.errorCount = 0;
+        apiHealthStatus.lastCheck = new Date();
+        console.log('API Health Check: OK');
+    } catch (error) {
+        apiHealthStatus.isHealthy = false;
+        apiHealthStatus.errorCount++;
+        apiHealthStatus.lastError = error.message;
+        apiHealthStatus.lastCheck = new Date();
+        console.log('API Health Check: FAILED -', error.message);
+    }
+}
+
+// Check API health every 5 minutes
+setInterval(checkApiHealth, 5 * 60 * 1000);
+checkApiHealth(); // Initial check
+
+// Mock data for when APIs are down
+const mockData = {
+    tc: {
+        "success": "true",
+        "count": 1,
+        "data": [{
+            "TC": "12345678901",
+            "ADI": "ÖRNEK",
+            "SOYADI": "KULLANICI",
+            "DOGUMTARIHI": "01.01.1990",
+            "NUFUSIL": "İSTANBUL",
+            "NUFUSILCE": "BEYOĞLU",
+            "ANNEADI": "FATMA",
+            "ANNETC": "98765432109",
+            "BABAADI": "MEHMET",
+            "BABATC": "11223344556",
+            "UYRUK": "TR"
+        }]
+    },
+    adsoyad: {
+        "success": "true",
+        "count": 3,
+        "data": [
+            {
+                "TC": "12345678901",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "15.03.1985",
+                "NUFUSIL": "ANKARA",
+                "NUFUSILCE": "ÇANKAYA",
+                "ANNEADI": "AYŞE",
+                "ANNETC": "98765432101",
+                "BABAADI": "MUSTAFA",
+                "BABATC": "11223344501",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678902",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "22.07.1992",
+                "NUFUSIL": "İZMİR",
+                "NUFUSILCE": "KONAK",
+                "ANNEADI": "ZEYNEP",
+                "ANNETC": "98765432102",
+                "BABAADI": "ALİ",
+                "BABATC": "11223344502",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678903",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "10.12.1988",
+                "NUFUSIL": "BURSA",
+                "NUFUSILCE": "OSMANGAZI",
+                "ANNEADI": "HATICE",
+                "ANNETC": "98765432103",
+                "BABAADI": "HASAN",
+                "BABATC": "11223344503",
+                "UYRUK": "TR"
+            }
+        ]
+    },
+    adres: {
+        "success": "true",
+        "count": 1,
+        "data": [{
+            "TC": "12345678901",
+            "ADRES": "ATATÜRK MAH. CUMHURİYET CAD. NO:123 DAİRE:5",
+            "MAHALLE": "ATATÜRK",
+            "SOKAK": "CUMHURİYET CADDESİ",
+            "BINA": "123",
+            "DAIRE": "5",
+            "POSTA": "34000",
+            "IL": "İSTANBUL",
+            "ILCE": "BEYOĞLU"
+        }]
+    },
+    isyeri: {
+        "success": "true",
+        "count": 1,
+        "data": [{
+            "TC": "12345678901",
+            "SIRKET": "ÖRNEK TİCARET LTD. ŞTİ.",
+            "UNVAN": "GENEL MÜDÜR",
+            "ADRES": "İŞ MERKEZİ MAH. TİCARET CAD. NO:456",
+            "TELEFON": "0212 555 0123",
+            "SEKTOR": "BİLİŞİM"
+        }]
+    },
+    sulale: {
+        "success": "true",
+        "count": 2,
+        "data": [
+            {
+                "TC": "98765432109",
+                "ADI": "FATMA",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "ANNE",
+                "DOGUMTARIHI": "05.08.1965"
+            },
+            {
+                "TC": "11223344556",
+                "ADI": "MEHMET",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "BABA",
+                "DOGUMTARIHI": "12.11.1960"
+            }
+        ]
+    },
+    tcgsm: {
+        "success": "true",
+        "count": 2,
+        "data": [
+            {
+                "TC": "12345678901",
+                "GSM": "05551234567",
+                "OPERATOR": "TURKCELL"
+            },
+            {
+                "TC": "12345678901",
+                "GSM": "05559876543",
+                "OPERATOR": "VODAFONE"
+            }
+        ]
+    },
+    gsmtc: {
+        "success": "true",
+        "count": 1,
+        "data": [{
+            "GSM": "05551234567",
+            "TC": "12345678901",
+            "ADI": "ÖRNEK",
+            "SOYADI": "KULLANICI",
+            "OPERATOR": "TURKCELL"
+        }]
+    }
+};
+
+// Alternative APIs (if main API fails)
+const alternativeApis = {
+    tc: [
+        'https://api.example1.com/tc',
+        'https://api.example2.com/tc'
+    ],
+    adsoyad: [
+        'https://api.example1.com/adsoyad',
+        'https://api.example2.com/adsoyad'
+    ]
+    // Add more alternatives as needed
+};
+
+async function makeApiRequest(endpoint, params, retryCount = 0) {
+    const maxRetries = 2;
+    
+    try {
+        // Primary API attempt
+        let url = `https://arastir.sbs/api/${endpoint}.php?`;
+        const queryParams = new URLSearchParams(params);
+        url += queryParams.toString();
+        
+        console.log(`API Request (attempt ${retryCount + 1}): ${url}`);
+        
+        const response = await axios.get(url, {
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+                'Referer': 'https://arastir.sbs/',
+                'Cache-Control': 'no-cache'
+            }
+        });
+        
+        console.log(`API Response: ${response.status}`, response.data);
+        
+        // Update health status on success
+        apiHealthStatus.isHealthy = true;
+        apiHealthStatus.errorCount = 0;
+        
+        return response.data;
+        
+    } catch (error) {
+        console.error(`API Error (attempt ${retryCount + 1}):`, error.message);
+        
+        // Update health status on error
+        apiHealthStatus.isHealthy = false;
+        apiHealthStatus.errorCount++;
+        apiHealthStatus.lastError = error.message;
+        
+        // Retry logic
+        if (retryCount < maxRetries) {
+            console.log(`Retrying in 2 seconds... (${retryCount + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return makeApiRequest(endpoint, params, retryCount + 1);
+        }
+        
+        // If all retries failed, try alternative APIs
+        if (alternativeApis[endpoint] && alternativeApis[endpoint].length > 0) {
+            console.log('Trying alternative APIs...');
+            for (const altUrl of alternativeApis[endpoint]) {
+                try {
+                    const queryParams = new URLSearchParams(params);
+                    const response = await axios.get(`${altUrl}?${queryParams.toString()}`, {
+                        timeout: 10000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                        }
+                    });
+                    console.log('Alternative API success:', altUrl);
+                    return response.data;
+                } catch (altError) {
+                    console.error('Alternative API failed:', altUrl, altError.message);
+                }
+            }
+        }
+        
+        // If everything fails, return mock data with warning
+        console.log('All APIs failed, returning mock data');
+        const mockResponse = mockData[endpoint];
+        if (mockResponse) {
+            return {
+                ...mockResponse,
+                _warning: 'Bu veriler örnek verilerdir. Ana API servisi şu anda erişilemez durumda.',
+                _apiStatus: 'offline',
+                _timestamp: new Date().toISOString()
+            };
+        }
+        
+        // If no mock data available, throw error
+        throw error;
+    }
+}
 
 // Favicon handler
 app.get('/favicon.ico', (req, res) => {
@@ -204,17 +472,74 @@ app.delete('/api/admin/users/:id', authenticateToken, (req, res) => {
     res.json({ message: 'User deleted successfully' });
 });
 
-// Protected API endpoints
+// Protected API endpoints with enhanced error handling
+// Enhanced API request function with retry logic
+async function makeExternalApiRequest(url, options = {}, retries = 2) {
+    const defaultOptions = {
+        timeout: 15000,
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            'Referer': 'https://arastir.sbs/',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
+    };
+
+    const finalOptions = { ...defaultOptions, ...options };
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            console.log(`API Request (attempt ${attempt + 1}/${retries + 1}): ${url}`);
+            
+            const response = await axios.get(url, finalOptions);
+            
+            console.log(`API Response (attempt ${attempt + 1}): Status ${response.status}`);
+            
+            // Validate response
+            if (response.data && typeof response.data === 'object') {
+                return response.data;
+            } else if (typeof response.data === 'string') {
+                try {
+                    return JSON.parse(response.data);
+                } catch (parseError) {
+                    throw new Error('Invalid JSON response from API');
+                }
+            } else {
+                throw new Error('Empty or invalid response from API');
+            }
+        } catch (error) {
+            console.error(`API Error (attempt ${attempt + 1}/${retries + 1}):`, error.message);
+            
+            // If this is the last attempt, throw the error
+            if (attempt === retries) {
+                throw error;
+            }
+            
+            // Wait before retrying (exponential backoff)
+            const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s...
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
+// Protected API endpoints with enhanced error handling
 app.get('/api/tc', authenticateToken, trackQuery, async (req, res) => {
     try {
         const { tc } = req.query;
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`);
-        res.json(response.data);
+        
+        const url = `https://arastir.sbs/api/tc.php?tc=${tc}`;
+        const data = await makeExternalApiRequest(url);
+        
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TC API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
@@ -224,10 +549,14 @@ app.get('/api/adres', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`);
-        res.json(response.data);
+        
+        const url = `https://arastir.sbs/api/adres.php?tc=${tc}`;
+        const data = await makeExternalApiRequest(url);
+        
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Adres API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
@@ -237,10 +566,12 @@ app.get('/api/isyeri', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`);
-        res.json(response.data);
+        
+        const data = await makeApiRequest('isyeri', { tc });
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('İşyeri API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
@@ -250,10 +581,12 @@ app.get('/api/sulale', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`);
-        res.json(response.data);
+        
+        const data = await makeApiRequest('sulale', { tc });
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Sulale API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
@@ -263,10 +596,12 @@ app.get('/api/tcgsm', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`);
-        res.json(response.data);
+        
+        const data = await makeApiRequest('tcgsm', { tc });
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TC-GSM API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
@@ -276,12 +611,55 @@ app.get('/api/gsmtc', authenticateToken, trackQuery, async (req, res) => {
         if (!gsm) {
             return res.status(400).json({ error: 'GSM parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/gsmtc.php?gsm=${gsm}`);
-        res.json(response.data);
+        
+        const data = await makeApiRequest('gsmtc', { gsm });
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('GSM-TC API Error:', error.message);
+        handleApiError(error, res);
     }
 });
+
+// Helper function for consistent error handling
+function handleApiError(error, res) {
+    console.error('API Error Details:', {
+        code: error.code,
+        message: error.message,
+        response: error.response ? {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data
+        } : null,
+        request: error.request ? 'Request made but no response' : null
+    });
+
+    if (error.code === 'ECONNABORTED') {
+        res.status(408).json({ 
+            error: 'API request timeout',
+            details: 'External API did not respond within 15 seconds',
+            suggestion: 'Please try again in a few moments'
+        });
+    } else if (error.response) {
+        res.status(error.response.status || 500).json({ 
+            error: 'External API error',
+            details: `API returned status ${error.response.status}: ${error.response.statusText}`,
+            statusText: error.response.statusText,
+            suggestion: 'The external service may be temporarily unavailable'
+        });
+    } else if (error.request) {
+        res.status(503).json({ 
+            error: 'Network error',
+            details: 'Could not connect to external API - network or DNS issue',
+            suggestion: 'Check your internet connection or try again later'
+        });
+    } else {
+        res.status(500).json({ 
+            error: 'API request failed',
+            details: error.message,
+            suggestion: 'Please contact support if this issue persists'
+        });
+    }
+}
 
 app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
     try {
@@ -291,14 +669,17 @@ app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
             return res.status(400).json({ error: 'Adi and Soyadi parameters required' });
         }
         
-        let queryString = `adi=${adi}&soyadi=${soyadi}`;
-        if (il) queryString += `&il=${il}`;
-        if (ilce) queryString += `&ilce=${ilce}`;
+        let queryString = `adi=${encodeURIComponent(adi)}&soyadi=${encodeURIComponent(soyadi)}`;
+        if (il) queryString += `&il=${encodeURIComponent(il)}`;
+        if (ilce) queryString += `&ilce=${encodeURIComponent(ilce)}`;
         
-        const response = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`);
-        res.json(response.data);
+        const url = `https://arastir.sbs/api/adsoyad.php?${queryString}`;
+        const data = await makeExternalApiRequest(url);
+        
+        res.json(data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Ad Soyad API Error:', error.message);
+        handleApiError(error, res);
     }
 });
 
