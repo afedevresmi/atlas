@@ -1446,31 +1446,47 @@ function addActionButtons(container, data, queryType) {
     const clearBtn = document.createElement('button');
     clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sorgu Temizle';
     clearBtn.className = 'action-btn clear-btn';
-    clearBtn.onclick = () => clearResults(container.id);
+    clearBtn.addEventListener('click', () => clearResults(container.id));
     
     // Export to Excel Button
     const exportBtn = document.createElement('button');
     exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Excel\'e Aktar';
     exportBtn.className = 'action-btn export-btn';
-    exportBtn.onclick = () => exportToExcel(data, queryType);
+    exportBtn.addEventListener('click', () => exportToExcel(data, queryType));
     
     // Copy Table Button (New - copies formatted table data)
     const copyTableBtn = document.createElement('button');
     copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
     copyTableBtn.className = 'action-btn copy-table-btn';
-    copyTableBtn.onclick = () => copyTableToClipboard(container, data);
+    copyTableBtn.addEventListener('click', () => {
+        copyTableBtn.classList.add('loading');
+        setTimeout(() => {
+            copyTableToClipboard(container, data);
+            copyTableBtn.classList.remove('loading');
+            copyTableBtn.classList.add('copy-success');
+            setTimeout(() => copyTableBtn.classList.remove('copy-success'), 600);
+        }, 100);
+    });
     
     // Copy JSON Button
     const copyBtn = document.createElement('button');
     copyBtn.innerHTML = '<i class="fas fa-copy"></i> JSON Kopyala';
     copyBtn.className = 'action-btn copy-btn';
-    copyBtn.onclick = () => copyToClipboard(JSON.stringify(data, null, 2));
+    copyBtn.addEventListener('click', () => {
+        copyBtn.classList.add('loading');
+        setTimeout(() => {
+            copyToClipboard(JSON.stringify(data, null, 2));
+            copyBtn.classList.remove('loading');
+            copyBtn.classList.add('copy-success');
+            setTimeout(() => copyBtn.classList.remove('copy-success'), 600);
+        }, 100);
+    });
     
     // Export to TXT Button
     const txtBtn = document.createElement('button');
     txtBtn.innerHTML = '<i class="fas fa-file-alt"></i> TXT İndir';
     txtBtn.className = 'action-btn export-btn';
-    txtBtn.onclick = () => downloadAsText(data, queryType);
+    txtBtn.addEventListener('click', () => downloadAsText(data, queryType));
     
     actionsDiv.appendChild(clearBtn);
     actionsDiv.appendChild(exportBtn);
