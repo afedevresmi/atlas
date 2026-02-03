@@ -1215,7 +1215,19 @@ function showLoading(containerId) {
 function displayResults(containerId, data, queryType) {
     const container = document.getElementById(containerId);
     
-    if (!data || (Array.isArray(data) && data.length === 0)) {
+    // Handle different response formats
+    let processedData = data;
+    
+    // Check if it's an ad soyad response with nested data structure
+    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
+        processedData = data.data;
+    }
+    // Check if it's a single object response that should be converted to array
+    else if (data && typeof data === 'object' && !Array.isArray(data) && data.success !== 'true') {
+        processedData = [data];
+    }
+    
+    if (!processedData || (Array.isArray(processedData) && processedData.length === 0)) {
         container.innerHTML = `
             <div style="text-align: center; padding: 60px; color: #888;">
                 <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-search" style="opacity: 0.3;"></i></div>
@@ -1226,48 +1238,204 @@ function displayResults(containerId, data, queryType) {
         return;
     }
     
+    // Display results with count information if available
+    let headerInfo = '';
+    if (data && data.success && data.count) {
+        headerInfo = `
+            <div class="results-header">
+                <h4><i class="fas fa-list"></i> Sorgu Sonuçları</h4>
+                <div class="results-count">
+                    <span class="count-badge">
+                        <i class="fas fa-users"></i>
+                        ${data.count} kayıt bulundu
+                    </span>
+                </div>
+            </div>
+        `;
+    }
+    
     // Always display as table for consistency
-    if (Array.isArray(data) && data.length > 0) {
-        displayTable(container, data, queryType);
-    } else if (typeof data === 'object') {
+    if (Array.isArray(processedData) && processedData.length > 0) {
+        displayEnhancedTable(container, processedData, queryType, headerInfo);
+    } else if (typeof processedData === 'object') {
         // Convert single object to array for table display
-        displayTable(container, [data], queryType);
+        displayEnhancedTable(container, [processedData], queryType, headerInfo);
     }
     
     // Add action buttons
-    addActionButtons(container, data, queryType);
+    addActionButtons(container, processedData, queryType);
 }
 
-function displayTable(container, data, queryType) {
+function displayEnhancedTable(container, data, queryType, headerInfo = '') {
     if (!data.length) return;
     
     const keys = Object.keys(data[0]);
-    let html = `
-        <div style="overflow-x: auto;">
-            <table class="results-table">
-                <thead>
-                    <tr>
-                        ${keys.map(key => `<th>${key}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
+    
+    // Create Turkish column headers for better readability
+    const columnHeaders = {
+        'TC': 'TC Kimlik No',
+        'ADI': 'Adı',
+        'SOYADI': 'Soyadı',
+        'DOGUMTARIHI': 'Doğum Tarihi',
+        'NUFUSIL': 'Nüfus İli',
+        'NUFUSILCE': 'Nüfus İlçesi',
+        'ANNEADI': 'Anne Adı',
+        'ANNETC': 'Anne TC',
+        'BABAADI': 'Baba Adı',
+        'BABATC': 'Baba TC',
+        'UYRUK': 'Uyruk',
+        'ADRES': 'Adres',
+        'MAHALLE': 'Mahalle',
+        'SOKAK': 'Sokak',
+        'BINA': 'Bina No',
+        'DAIRE': 'Daire No',
+        'POSTA': 'Posta Kodu',
+        'GSM': 'GSM Numarası',
+        'TELEFON': 'Telefon',
+        'EMAIL': 'E-posta'
+    };
+    
+    let html = headerInfo + `
+        <div class="enhanced-table-container">
+            <div class="table-wrapper">
+                <table class="enhanced-results-table">
+                    <thead>
+                        <tr>
+                            ${keys.map(key => `
+                                <th>
+                                    <div class="header-content">
+                                        <span>${columnHeaders[key] || key}</span>
+                                        <i class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
     
     data.forEach((item, index) => {
-        html += `<tr style="animation: fadeInUp 0.4s ease-out ${index * 0.1}s both;">`;
+        html += `<tr class="table-row" style="animation: slideInUp 0.4s ease-out ${index * 0.1}s both;">`;
         keys.forEach(key => {
-            html += `<td>${item[key] || '-'}</td>`;
+            let value = item[key] || '-';
+            let cellClass = '';
+            
+            // Add special formatting for specific fields
+            if (key === 'TC' || key === 'ANNETC' || key === 'BABATC') {
+                cellClass = 'tc-cell';
+                if (value !== '-') {
+                    value = `<span class="tc-number">${value}</span>`;
+                }
+            } else if (key === 'DOGUMTARIHI') {
+                cellClass = 'date-cell';
+                if (value !== '-') {
+                    value = `<span class="date-value">${value}</span>`;
+                }
+            } else if (key === 'ADI' || key === 'SOYADI' || key === 'ANNEADI' || key === 'BABAADI') {
+                cellClass = 'name-cell';
+                if (value !== '-') {
+                    value = `<span class="name-value">${value}</span>`;
+                }
+            } else if (key === 'NUFUSIL' || key === 'NUFUSILCE') {
+                cellClass = 'location-cell';
+                if (value !== '-') {
+                    value = `<span class="location-value"><i class="fas fa-map-marker-alt"></i> ${value}</span>`;
+                }
+            } else if (key === 'GSM' || key === 'TELEFON') {
+                cellClass = 'phone-cell';
+                if (value !== '-') {
+                    value = `<span class="phone-value"><i class="fas fa-phone"></i> ${value}</span>`;
+                }
+            } else if (key === 'EMAIL') {
+                cellClass = 'email-cell';
+                if (value !== '-') {
+                    value = `<span class="email-value"><i class="fas fa-envelope"></i> ${value}</span>`;
+                }
+            }
+            
+            html += `<td class="${cellClass}">${value}</td>`;
         });
         html += '</tr>';
     });
     
     html += `
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
     
     container.innerHTML = html;
+    
+    // Add table search functionality
+    addTableSearch(container);
+}
+
+function addTableSearch(container) {
+    const tableWrapper = container.querySelector('.table-wrapper');
+    if (!tableWrapper) return;
+    
+    // Add search input
+    const searchDiv = document.createElement('div');
+    searchDiv.className = 'table-search';
+    searchDiv.innerHTML = `
+        <div class="search-input-group">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Tabloda ara..." class="table-search-input">
+            <button class="clear-search-btn" title="Temizle">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    tableWrapper.insertBefore(searchDiv, tableWrapper.firstChild);
+    
+    const searchInput = searchDiv.querySelector('.table-search-input');
+    const clearBtn = searchDiv.querySelector('.clear-search-btn');
+    const table = container.querySelector('.enhanced-results-table');
+    const rows = table.querySelectorAll('tbody tr');
+    
+    // Search functionality
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Update results count
+        updateResultsCount(container, visibleCount, rows.length);
+        
+        // Show/hide clear button
+        clearBtn.style.display = searchTerm ? 'block' : 'none';
+    });
+    
+    // Clear search
+    clearBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        rows.forEach(row => row.style.display = '');
+        updateResultsCount(container, rows.length, rows.length);
+        this.style.display = 'none';
+        searchInput.focus();
+    });
+}
+
+function updateResultsCount(container, visible, total) {
+    const countBadge = container.querySelector('.count-badge');
+    if (countBadge) {
+        if (visible === total) {
+            countBadge.innerHTML = `<i class="fas fa-users"></i> ${total} kayıt bulundu`;
+        } else {
+            countBadge.innerHTML = `<i class="fas fa-users"></i> ${visible}/${total} kayıt gösteriliyor`;
+        }
+    }
 }
 
 function addActionButtons(container, data, queryType) {
@@ -1286,6 +1454,12 @@ function addActionButtons(container, data, queryType) {
     exportBtn.className = 'action-btn export-btn';
     exportBtn.onclick = () => exportToExcel(data, queryType);
     
+    // Copy Table Button (New - copies formatted table data)
+    const copyTableBtn = document.createElement('button');
+    copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
+    copyTableBtn.className = 'action-btn copy-table-btn';
+    copyTableBtn.onclick = () => copyTableToClipboard(container, data);
+    
     // Copy JSON Button
     const copyBtn = document.createElement('button');
     copyBtn.innerHTML = '<i class="fas fa-copy"></i> JSON Kopyala';
@@ -1300,10 +1474,109 @@ function addActionButtons(container, data, queryType) {
     
     actionsDiv.appendChild(clearBtn);
     actionsDiv.appendChild(exportBtn);
+    actionsDiv.appendChild(copyTableBtn);
     actionsDiv.appendChild(copyBtn);
     actionsDiv.appendChild(txtBtn);
     
     container.appendChild(actionsDiv);
+}
+
+// New function to copy table data in a readable format
+function copyTableToClipboard(container, data) {
+    try {
+        // Process data to handle nested structure
+        let processedData = data;
+        if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
+            processedData = data.data;
+        } else if (!Array.isArray(data)) {
+            processedData = [data];
+        }
+        
+        if (!processedData || processedData.length === 0) {
+            showToast('Kopyalanacak veri bulunamadı!', 'error');
+            return;
+        }
+        
+        // Create formatted table text
+        const keys = Object.keys(processedData[0]);
+        
+        // Column headers with Turkish translations
+        const columnHeaders = {
+            'TC': 'TC Kimlik No',
+            'ADI': 'Adı',
+            'SOYADI': 'Soyadı',
+            'DOGUMTARIHI': 'Doğum Tarihi',
+            'NUFUSIL': 'Nüfus İli',
+            'NUFUSILCE': 'Nüfus İlçesi',
+            'ANNEADI': 'Anne Adı',
+            'ANNETC': 'Anne TC',
+            'BABAADI': 'Baba Adı',
+            'BABATC': 'Baba TC',
+            'UYRUK': 'Uyruk',
+            'ADRES': 'Adres',
+            'MAHALLE': 'Mahalle',
+            'SOKAK': 'Sokak',
+            'BINA': 'Bina No',
+            'DAIRE': 'Daire No',
+            'POSTA': 'Posta Kodu',
+            'GSM': 'GSM Numarası',
+            'TELEFON': 'Telefon',
+            'EMAIL': 'E-posta'
+        };
+        
+        // Calculate column widths for better formatting
+        const columnWidths = {};
+        keys.forEach(key => {
+            const headerLength = (columnHeaders[key] || key).length;
+            const maxDataLength = Math.max(...processedData.map(item => 
+                String(item[key] || '-').length
+            ));
+            columnWidths[key] = Math.max(headerLength, maxDataLength, 10);
+        });
+        
+        // Create header row
+        let tableText = '';
+        tableText += keys.map(key => 
+            (columnHeaders[key] || key).padEnd(columnWidths[key])
+        ).join(' | ') + '\n';
+        
+        // Create separator row
+        tableText += keys.map(key => 
+            '-'.repeat(columnWidths[key])
+        ).join('-|-') + '\n';
+        
+        // Create data rows
+        processedData.forEach(item => {
+            tableText += keys.map(key => {
+                const value = item[key] || '-';
+                return String(value).padEnd(columnWidths[key]);
+            }).join(' | ') + '\n';
+        });
+        
+        // Add summary information
+        tableText += '\n';
+        tableText += `Toplam Kayıt: ${processedData.length}\n`;
+        tableText += `Sorgu Zamanı: ${new Date().toLocaleString('tr-TR')}\n`;
+        tableText += `Kaynak: Atlas Panel - https://atlaspanel.onrender.com\n`;
+        
+        // Copy to clipboard
+        navigator.clipboard.writeText(tableText).then(() => {
+            showToast(`${processedData.length} kayıt tablo formatında kopyalandı!`, 'success');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = tableText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast(`${processedData.length} kayıt tablo formatında kopyalandı!`, 'success');
+        });
+        
+    } catch (error) {
+        console.error('Copy error:', error);
+        showToast('Kopyalama başarısız!', 'error');
+    }
 }
 
 // Utility Functions
@@ -1328,8 +1601,69 @@ function copyToClipboard(text) {
 }
 
 function downloadAsText(data, queryType) {
-    const text = JSON.stringify(data, null, 2);
-    const blob = new Blob([text], { type: 'text/plain' });
+    // Process data to handle nested structure
+    let processedData = data;
+    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
+        processedData = data.data;
+    } else if (!Array.isArray(data)) {
+        processedData = [data];
+    }
+    
+    if (!processedData || processedData.length === 0) {
+        showToast('İndirilecek veri bulunamadı!', 'error');
+        return;
+    }
+    
+    // Create formatted text content
+    const keys = Object.keys(processedData[0]);
+    
+    // Column headers with Turkish translations
+    const columnHeaders = {
+        'TC': 'TC Kimlik No',
+        'ADI': 'Adı',
+        'SOYADI': 'Soyadı',
+        'DOGUMTARIHI': 'Doğum Tarihi',
+        'NUFUSIL': 'Nüfus İli',
+        'NUFUSILCE': 'Nüfus İlçesi',
+        'ANNEADI': 'Anne Adı',
+        'ANNETC': 'Anne TC',
+        'BABAADI': 'Baba Adı',
+        'BABATC': 'Baba TC',
+        'UYRUK': 'Uyruk',
+        'ADRES': 'Adres',
+        'MAHALLE': 'Mahalle',
+        'SOKAK': 'Sokak',
+        'BINA': 'Bina No',
+        'DAIRE': 'Daire No',
+        'POSTA': 'Posta Kodu',
+        'GSM': 'GSM Numarası',
+        'TELEFON': 'Telefon',
+        'EMAIL': 'E-posta'
+    };
+    
+    let textContent = `ATLAS PANEL - ${queryType.toUpperCase()} SORGU SONUÇLARI\n`;
+    textContent += `Sorgu Zamanı: ${new Date().toLocaleString('tr-TR')}\n`;
+    textContent += `Toplam Kayıt: ${processedData.length}\n`;
+    textContent += `${'='.repeat(80)}\n\n`;
+    
+    processedData.forEach((item, index) => {
+        textContent += `KAYIT ${index + 1}:\n`;
+        textContent += `${'-'.repeat(40)}\n`;
+        
+        keys.forEach(key => {
+            const label = columnHeaders[key] || key;
+            const value = item[key] || '-';
+            textContent += `${label}: ${value}\n`;
+        });
+        
+        textContent += '\n';
+    });
+    
+    textContent += `${'='.repeat(80)}\n`;
+    textContent += `Toplam ${processedData.length} kayıt listelendi.\n`;
+    textContent += `Atlas Panel - https://atlaspanel.onrender.com\n`;
+    
+    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
@@ -1340,27 +1674,65 @@ function downloadAsText(data, queryType) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast('TXT dosyası indirildi!', 'success');
+    showToast(`TXT dosyası indirildi! (${processedData.length} kayıt)`, 'success');
 }
 
 function exportToExcel(data, queryType) {
-    if (!Array.isArray(data) || data.length === 0) {
+    // Process data to handle nested structure
+    let processedData = data;
+    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
+        processedData = data.data;
+    } else if (!Array.isArray(data)) {
+        processedData = [data];
+    }
+    
+    if (!processedData || processedData.length === 0) {
         showToast('Dışa aktarılacak veri bulunamadı!', 'error');
         return;
     }
     
-    // Create CSV content
-    const keys = Object.keys(data[0]);
-    let csvContent = keys.join(',') + '\n';
+    // Create CSV content with Turkish headers
+    const keys = Object.keys(processedData[0]);
     
-    data.forEach(item => {
+    // Column headers with Turkish translations
+    const columnHeaders = {
+        'TC': 'TC Kimlik No',
+        'ADI': 'Adı',
+        'SOYADI': 'Soyadı',
+        'DOGUMTARIHI': 'Doğum Tarihi',
+        'NUFUSIL': 'Nüfus İli',
+        'NUFUSILCE': 'Nüfus İlçesi',
+        'ANNEADI': 'Anne Adı',
+        'ANNETC': 'Anne TC',
+        'BABAADI': 'Baba Adı',
+        'BABATC': 'Baba TC',
+        'UYRUK': 'Uyruk',
+        'ADRES': 'Adres',
+        'MAHALLE': 'Mahalle',
+        'SOKAK': 'Sokak',
+        'BINA': 'Bina No',
+        'DAIRE': 'Daire No',
+        'POSTA': 'Posta Kodu',
+        'GSM': 'GSM Numarası',
+        'TELEFON': 'Telefon',
+        'EMAIL': 'E-posta'
+    };
+    
+    // Create header row with Turkish column names
+    let csvContent = keys.map(key => `"${columnHeaders[key] || key}"`).join(',') + '\n';
+    
+    processedData.forEach(item => {
         const row = keys.map(key => {
             const value = item[key] || '';
-            // Escape commas and quotes
-            return `"${String(value).replace(/"/g, '""')}"`;
+            // Escape commas and quotes, handle null values
+            return `"${String(value === null ? '' : value).replace(/"/g, '""')}"`;
         });
         csvContent += row.join(',') + '\n';
     });
+    
+    // Add BOM for proper Turkish character display in Excel
+    const BOM = '\uFEFF';
+    csvContent = BOM + csvContent;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1374,7 +1746,7 @@ function exportToExcel(data, queryType) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast('Excel dosyası indirildi!', 'success');
+    showToast(`Excel dosyası indirildi! (${processedData.length} kayıt)`, 'success');
 }
 
 // Admin Functions
