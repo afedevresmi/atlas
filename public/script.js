@@ -945,3 +945,180 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// IBAN Lookup Functions
+async function queryIBAN() {
+    const iban = document.getElementById('ibanInput').value.trim();
+    
+    if (!iban) {
+        showToast('IBAN numarası girin!', 'error');
+        return;
+    }
+    
+    // Clean IBAN (remove spaces)
+    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+    
+    // Basic IBAN format validation
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
+        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
+        return;
+    }
+    
+    if (cleanIban.length < 15 || cleanIban.length > 34) {
+        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
+        return;
+    }
+    
+    showLoading('ibanResults');
+    
+    const data = await makeApiRequest('iban', { iban: cleanIban });
+    if (data) {
+        displayIBANResults('ibanResults', data);
+        showToast('IBAN sorgusu tamamlandı!', 'success');
+    }
+}
+
+function setExampleIBAN(iban) {
+    document.getElementById('ibanInput').value = iban;
+}
+
+function displayIBANResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>IBAN Sorgusu Başarısız</h3>
+                <p>${data?.details || 'IBAN numarası doğrulanamadı veya geçersiz.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="iban-sources-info">
+            <h5><i class="fas fa-university"></i> IBAN Doğrulama Sonucu</h5>
+            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
+        </div>
+    `;
+    
+    // IBAN Validation Status
+    html += `
+        <div class="iban-result-section">
+            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
+            <div class="iban-validation">
+                <span class="validation-badge ${data.isValid ? 'validation-valid' : 'validation-invalid'}">
+                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
+                    ${data.isValid ? 'Geçerli IBAN' : 'Geçersiz IBAN'}
+                </span>
+            </div>
+            <div class="iban-formatted">${data.formatted}</div>
+        </div>
+    `;
+    
+    // Basic IBAN Information
+    html += `
+        <div class="iban-result-section">
+            <h4><i class="fas fa-info-circle"></i> IBAN Bilgileri</h4>
+            <div class="iban-result-grid">
+                ${createIBANResultItem('IBAN Numarası', data.iban)}
+                ${createIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
+                ${createIBANResultItem('Kontrol Rakamları', data.checkDigits)}
+                ${createIBANResultItem('Banka Kodu', data.bankCode)}
+                ${createIBANResultItem('Hesap Numarası', data.accountNumber)}
+            </div>
+        </div>
+    `;
+    
+    // Bank Information
+    if (data.bankInfo && (data.bankInfo.bankName || data.bankInfo.bic)) {
+        html += `
+            <div class="iban-result-section">
+                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
+                <div class="bank-info-card">
+                    <h5><i class="fas fa-university"></i> Banka Detayları</h5>
+                    <div class="iban-result-grid">
+                        ${createIBANResultItem('Banka Adı', data.bankInfo.bankName || 'Bilinmiyor')}
+                        ${createIBANResultItem('BIC/SWIFT Kodu', data.bankInfo.bic || 'Bilinmiyor')}
+                        ${createIBANResultItem('Şehir', data.bankInfo.city || 'Bilinmiyor')}
+                        ${createIBANResultItem('Ülke', data.bankInfo.country)}
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="iban-result-section">
+                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
+                <div class="bank-info-card">
+                    <p style="color: #888; text-align: center; padding: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        Bu IBAN için detaylı banka bilgisi bulunamadı.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Validation Details
+    if (data.validation) {
+        html += `
+            <div class="iban-result-section">
+                <h4><i class="fas fa-cogs"></i> Teknik Detaylar</h4>
+                <div class="iban-result-grid">
+                    ${createIBANResultItem('Doğrulama Durumu', data.validation.isValid ? 'Başarılı' : 'Başarısız')}
+                    ${data.validation.error ? createIBANResultItem('Hata Detayı', data.validation.error) : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Add action buttons
+    addActionButtons(container, data, 'IBAN Lookup');
+}
+
+function createIBANResultItem(label, value) {
+    if (!value || value === 'null' || value === 'undefined' || value === 'Bilinmiyor') {
+        if (value === 'Bilinmiyor') {
+            return `
+                <div class="iban-result-item">
+                    <span class="iban-result-label">${label}:</span>
+                    <span class="iban-result-value" style="color: #888; font-style: italic;">${value}</span>
+                </div>
+            `;
+        }
+        return '';
+    }
+    
+    return `
+        <div class="iban-result-item">
+            <span class="iban-result-label">${label}:</span>
+            <span class="iban-result-value">${value}</span>
+        </div>
+    `;
+}
+
+// Format IBAN input as user types
+document.addEventListener('DOMContentLoaded', function() {
+    const ibanInput = document.getElementById('ibanInput');
+    if (ibanInput) {
+        ibanInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s/g, '').toUpperCase();
+            let formatted = value.replace(/(.{4})/g, '$1 ').trim();
+            if (formatted.length <= 34 + 8) { // 34 chars + 8 spaces max
+                e.target.value = formatted;
+            }
+        });
+        
+        ibanInput.addEventListener('paste', function(e) {
+            setTimeout(() => {
+                let value = e.target.value.replace(/\s/g, '').toUpperCase();
+                let formatted = value.replace(/(.{4})/g, '$1 ').trim();
+                e.target.value = formatted;
+            }, 10);
+        });
+    }
+});

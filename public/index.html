@@ -52,6 +52,7 @@
                 <li><a href="#" data-page="tcgsm" class="nav-link"><i class="fas fa-mobile-alt"></i> TC → GSM</a></li>
                 <li><a href="#" data-page="gsmtc" class="nav-link"><i class="fas fa-phone"></i> GSM → TC</a></li>
                 <li><a href="#" data-page="iplookup" class="nav-link"><i class="fas fa-globe"></i> IP Sorgu</a></li>
+                <li><a href="#" data-page="iban" class="nav-link"><i class="fas fa-university"></i> IBAN Sorgu</a></li>
                 <li id="adminMenuItem" class="hidden"><a href="#" data-page="admin" class="nav-link"><i class="fas fa-cog"></i> Admin Panel</a></li>
             </ul>
         </nav>
@@ -226,6 +227,31 @@
                     <button onclick="queryIPLookup()" class="query-btn"><i class="fas fa-search"></i> IP Sorgula</button>
                 </div>
                 <div id="iplookupResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
+            </div>
+
+            <!-- IBAN Lookup Page -->
+            <div id="ibanPage" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">IBAN Doğrulama ve Sorgu</h1>
+                    <p class="page-subtitle">IBAN numarası doğrulama ve banka bilgisi sorgulama</p>
+                </div>
+                <div class="query-form" data-aos="fade-up">
+                    <div class="iban-input-section">
+                        <input type="text" id="ibanInput" placeholder="IBAN Numarası (örn: TR330006100519786457841326)" maxlength="34">
+                        <div class="iban-examples">
+                            <span>Örnekler:</span>
+                            <button type="button" onclick="setExampleIBAN('TR330006100519786457841326')" class="example-iban">TR33 0006 1005 1978 6457 8413 26</button>
+                            <button type="button" onclick="setExampleIBAN('DE89370400440532013000')" class="example-iban">DE89 3704 0044 0532 0130 00</button>
+                            <button type="button" onclick="setExampleIBAN('GB29NWBK60161331926819')" class="example-iban">GB29 NWBK 6016 1331 9268 19</button>
+                        </div>
+                        <div class="iban-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span>IBAN numarasını boşluklu veya boşluksuz girebilirsiniz</span>
+                        </div>
+                    </div>
+                    <button onclick="queryIBAN()" class="query-btn"><i class="fas fa-university"></i> IBAN Sorgula</button>
+                </div>
+                <div id="ibanResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Admin Panel Page -->
