@@ -1469,6 +1469,12 @@ function addActionButtons(container, data, queryType) {
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'action-buttons';
     
+    // Super Search Button (NEW)
+    const superSearchBtn = document.createElement('button');
+    superSearchBtn.innerHTML = '<i class="fas fa-search-plus"></i> Bu Kişi Super Search';
+    superSearchBtn.className = 'action-btn super-search-btn';
+    superSearchBtn.addEventListener('click', () => performSuperSearchFromResult(data, queryType));
+    
     // Clear Results Button
     const clearBtn = document.createElement('button');
     clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sorgu Temizle';
@@ -1481,7 +1487,7 @@ function addActionButtons(container, data, queryType) {
     exportBtn.className = 'action-btn export-btn';
     exportBtn.addEventListener('click', () => exportToExcel(data, queryType));
     
-    // Copy Table Button (New - copies formatted table data)
+    // Copy Table Button
     const copyTableBtn = document.createElement('button');
     copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
     copyTableBtn.className = 'action-btn copy-table-btn';
@@ -1509,17 +1515,11 @@ function addActionButtons(container, data, queryType) {
         }, 100);
     });
     
-    // Export to TXT Button
-    const txtBtn = document.createElement('button');
-    txtBtn.innerHTML = '<i class="fas fa-file-alt"></i> TXT İndir';
-    txtBtn.className = 'action-btn export-btn';
-    txtBtn.addEventListener('click', () => downloadAsText(data, queryType));
-    
+    actionsDiv.appendChild(superSearchBtn);
     actionsDiv.appendChild(clearBtn);
     actionsDiv.appendChild(exportBtn);
     actionsDiv.appendChild(copyTableBtn);
     actionsDiv.appendChild(copyBtn);
-    actionsDiv.appendChild(txtBtn);
     
     container.appendChild(actionsDiv);
 }
@@ -2533,4 +2533,636 @@ function formatResultData(result) {
     }
     
     return html;
+}
+// Global map variable
+let ipMap = null;
+let currentMarker = null;
+
+// Enhanced IP Query with Map
+async function queryEnhancedIPWithMap() {
+    const ip = document.getElementById('ipInput').value.trim();
+    const showMap = document.getElementById('showMap').checked;
+    
+    if (!ip) {
+        showToast('IP adresi girin!', 'error');
+        return;
+    }
+    
+    // Enhanced IP validation (IPv4 and IPv6)
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+    
+    if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
+        showToast('Geçerli bir IP adresi girin! (IPv4 veya IPv6)', 'error');
+        return;
+    }
+    
+    showEnhancedLoading('iplookupResults', 'IP Analizi');
+    
+    if (showMap) {
+        showMapContainer();
+        initializeMap();
+    }
+    
+    const data = await makeApiRequest('iplookup', { ip });
+    if (data) {
+        displayEnhancedIPResults('iplookupResults', data);
+        
+        if (showMap && data.data && data.data.location) {
+            updateMapWithLocation(data.data.location, ip);
+        }
+        
+        showToast('Gelişmiş IP analizi tamamlandı!', 'success');
+    }
+}
+
+// Show map container with animation
+function showMapContainer() {
+    const mapContainer = document.getElementById('ipMapContainer');
+    mapContainer.classList.remove('hidden');
+    
+    // Trigger animation
+    setTimeout(() => {
+        mapContainer.style.animation = 'slideInUp 0.8s ease-out';
+    }, 100);
+}
+
+// Initialize Leaflet map
+function initializeMap() {
+    const mapElement = document.getElementById('ipMap');
+    
+    if (ipMap) {
+        ipMap.remove();
+    }
+    
+    // Show loading state
+    mapElement.innerHTML = `
+        <div class="map-loading">
+            <div class="map-loading-spinner"></div>
+            <div class="map-loading-text">Harita yükleniyor...</div>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        ipMap = L.map('ipMap', {
+            zoomControl: true,
+            scrollWheelZoom: true,
+            doubleClickZoom: true,
+            touchZoom: true
+        }).setView([39.9334, 32.8597], 6); // Default to Turkey center
+        
+        // Add dark theme tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors © CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(ipMap);
+        
+        // Add custom controls
+        addMapControls();
+        
+    }, 500);
+}
+
+// Update map with IP location
+function updateMapWithLocation(location, ip) {
+    if (!ipMap || !location.latitude || !location.longitude) return;
+    
+    const lat = parseFloat(location.latitude);
+    const lng = parseFloat(location.longitude);
+    
+    // Remove existing marker
+    if (currentMarker) {
+        ipMap.removeLayer(currentMarker);
+    }
+    
+    // Create custom animated marker
+    const customIcon = L.divIcon({
+        className: 'custom-marker',
+        html: `
+            <div class="marker-pin">
+                <div class="marker-pulse"></div>
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+        `,
+        iconSize: [30, 30],
+        iconAnchor: [15, 30]
+    });
+    
+    // Add marker with popup
+    currentMarker = L.marker([lat, lng], { icon: customIcon })
+        .addTo(ipMap)
+        .bindPopup(`
+            <div class="map-popup">
+                <h4><i class="fas fa-globe"></i> IP Konum Bilgisi</h4>
+                <div class="popup-content">
+                    <div class="popup-item">
+                        <strong>IP Adresi:</strong> ${ip}
+                    </div>
+                    <div class="popup-item">
+                        <strong>Şehir:</strong> ${location.city || 'Bilinmiyor'}
+                    </div>
+                    <div class="popup-item">
+                        <strong>Ülke:</strong> ${location.country || 'Bilinmiyor'}
+                    </div>
+                    <div class="popup-item">
+                        <strong>Koordinatlar:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}
+                    </div>
+                    <div class="popup-item">
+                        <strong>ISP:</strong> ${location.isp || 'Bilinmiyor'}
+                    </div>
+                </div>
+            </div>
+        `, {
+            maxWidth: 300,
+            className: 'custom-popup'
+        });
+    
+    // Animate to location
+    ipMap.flyTo([lat, lng], 10, {
+        animate: true,
+        duration: 2
+    });
+    
+    // Update location info
+    updateLocationInfo(location, lat, lng);
+    
+    // Add accuracy circle if available
+    if (location.accuracy) {
+        const accuracyRadius = location.accuracy * 1000; // Convert to meters
+        L.circle([lat, lng], {
+            color: '#4a9eff',
+            fillColor: '#4a9eff',
+            fillOpacity: 0.1,
+            radius: accuracyRadius
+        }).addTo(ipMap);
+    }
+}
+
+// Update location information display
+function updateLocationInfo(location, lat, lng) {
+    const locationText = document.getElementById('mapLocationText');
+    const accuracyText = document.getElementById('mapAccuracyText');
+    
+    if (locationText) {
+        locationText.innerHTML = `
+            <strong>${location.city || 'Bilinmiyor'}, ${location.country || 'Bilinmiyor'}</strong>
+            <br><small>Koordinatlar: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
+        `;
+    }
+    
+    if (accuracyText) {
+        const accuracy = location.accuracy || 'Bilinmiyor';
+        accuracyText.innerHTML = `Doğruluk: ${accuracy === 'Bilinmiyor' ? accuracy : accuracy + ' km'}`;
+    }
+}
+
+// Add custom map controls
+function addMapControls() {
+    // Add custom CSS for marker
+    const markerStyle = document.createElement('style');
+    markerStyle.textContent = `
+        .custom-marker {
+            background: none;
+            border: none;
+        }
+        
+        .marker-pin {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            color: #4a9eff;
+            font-size: 24px;
+            animation: bounce 2s infinite;
+        }
+        
+        .marker-pulse {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #4a9eff;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            opacity: 0.6;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.3;
+            }
+            100% {
+                transform: scale(0.8);
+                opacity: 0.6;
+            }
+        }
+        
+        .map-popup h4 {
+            color: #4a9eff;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .popup-content {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .popup-item {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        .popup-item strong {
+            color: #4a9eff;
+        }
+    `;
+    document.head.appendChild(markerStyle);
+}
+
+// Toggle map fullscreen
+function toggleMapView() {
+    const mapContainer = document.getElementById('ipMapContainer');
+    
+    if (mapContainer.classList.contains('map-fullscreen')) {
+        mapContainer.classList.remove('map-fullscreen');
+        document.body.style.overflow = 'auto';
+    } else {
+        mapContainer.classList.add('map-fullscreen');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Resize map after transition
+    setTimeout(() => {
+        if (ipMap) {
+            ipMap.invalidateSize();
+        }
+    }, 500);
+}
+
+// Center map on marker
+function centerMap() {
+    if (ipMap && currentMarker) {
+        const markerLatLng = currentMarker.getLatLng();
+        ipMap.flyTo(markerLatLng, 12, {
+            animate: true,
+            duration: 1.5
+        });
+    }
+}
+
+// IBAN to Account Holder Query
+async function queryIBANHesapSahibi() {
+    const iban = document.getElementById('ibanHesapInput').value.trim();
+    
+    if (!iban) {
+        showToast('IBAN numarası girin!', 'error');
+        return;
+    }
+    
+    // Clean IBAN (remove spaces)
+    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+    
+    // Enhanced IBAN format validation
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
+        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
+        return;
+    }
+    
+    if (cleanIban.length < 15 || cleanIban.length > 34) {
+        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
+        return;
+    }
+    
+    showEnhancedLoading('ibanhesapResults', 'IBAN Hesap Sahibi Analizi');
+    
+    const data = await makeApiRequest('ibanhesap', { iban: cleanIban });
+    if (data) {
+        displayIBANHesapSahibiResults('ibanhesapResults', data);
+        showToast('IBAN hesap sahibi sorgusu tamamlandı!', 'success');
+    }
+}
+
+// Display IBAN Account Holder Results
+function displayIBANHesapSahibiResults(containerId, data) {
+    const container = document.getElementById(containerId);
+    
+    if (!data || data.error) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
+                <h3>IBAN Hesap Sahibi Sorgusu Başarısız</h3>
+                <p>${data?.details || 'IBAN hesap sahibi bilgisi bulunamadı.'}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="enhanced-sources-info">
+            <h5><i class="fas fa-user-check"></i> IBAN Hesap Sahibi Sorgu Sonucu</h5>
+            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
+        </div>
+    `;
+    
+    // Account Holder Information
+    if (data.accountHolder) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-user"></i> Hesap Sahibi Bilgileri</h4>
+                <div class="account-holder-card">
+                    <div class="holder-info">
+                        <div class="holder-name">
+                            <i class="fas fa-user-circle"></i>
+                            <span>${data.accountHolder.name || 'Bilgi Bulunamadı'}</span>
+                        </div>
+                        <div class="holder-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Hesap Türü:</span>
+                                <span class="detail-value">${data.accountHolder.accountType || 'Bilinmiyor'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Hesap Durumu:</span>
+                                <span class="detail-value status-${data.accountHolder.status || 'unknown'}">${data.accountHolder.status || 'Bilinmiyor'}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Açılış Tarihi:</span>
+                                <span class="detail-value">${data.accountHolder.openDate || 'Bilinmiyor'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // IBAN Details
+    html += `
+        <div class="enhanced-result-section">
+            <h4><i class="fas fa-university"></i> IBAN Detayları</h4>
+            <div class="iban-formatted">${data.formatted || data.iban}</div>
+            <div class="iban-result-grid">
+                ${createEnhancedIBANResultItem('IBAN Numarası', data.iban)}
+                ${createEnhancedIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
+                ${createEnhancedIBANResultItem('Banka Kodu', data.bankCode)}
+                ${createEnhancedIBANResultItem('Hesap Numarası', data.accountNumber)}
+            </div>
+        </div>
+    `;
+    
+    // Bank Information
+    if (data.bankInfo) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
+                <div class="bank-info-card">
+                    <h5><i class="fas fa-university"></i> ${data.bankInfo.bankName || 'Banka Bilgisi'}</h5>
+                    <div class="iban-result-grid">
+                        ${createEnhancedIBANResultItem('Banka Adı', data.bankInfo.bankName)}
+                        ${createEnhancedIBANResultItem('BIC/SWIFT', data.bankInfo.bic)}
+                        ${createEnhancedIBANResultItem('Şube', data.bankInfo.branch)}
+                        ${createEnhancedIBANResultItem('Şehir', data.bankInfo.city)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Security Analysis
+    if (data.security) {
+        html += `
+            <div class="enhanced-result-section">
+                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
+                <div class="security-analysis">
+                    ${createSecurityItem('Hesap Doğrulaması', { detected: data.security.verified, confidence: data.security.confidence })}
+                    ${createSecurityItem('Risk Seviyesi', { detected: data.security.riskLevel === 'high', confidence: 100 })}
+                    ${createSecurityItem('Sahiplik Doğrulaması', { detected: data.security.ownershipVerified, confidence: data.security.ownershipConfidence })}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    
+    // Add action buttons
+    addActionButtons(container, data, 'IBAN Account Holder');
+}
+
+// Set example IBAN for account holder query
+function setExampleIBANHesap(iban) {
+    document.getElementById('ibanHesapInput').value = iban;
+}
+
+// Format IBAN input for account holder query
+document.addEventListener('DOMContentLoaded', function() {
+    const ibanHesapInput = document.getElementById('ibanHesapInput');
+    if (ibanHesapInput) {
+        ibanHesapInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\s/g, '').toUpperCase();
+            let formatted = value.replace(/(.{4})/g, '$1 ').trim();
+            if (formatted.length <= 34 + 8) { // 34 chars + 8 spaces max
+                e.target.value = formatted;
+            }
+        });
+        
+        ibanHesapInput.addEventListener('paste', function(e) {
+            setTimeout(() => {
+                let value = e.target.value.replace(/\s/g, '').toUpperCase();
+                let formatted = value.replace(/(.{4})/g, '$1 ').trim();
+                e.target.value = formatted;
+            }, 10);
+        });
+    }
+});
+// Super Search from result data
+async function performSuperSearchFromResult(data, queryType) {
+    let searchTerms = [];
+    
+    // Extract search terms from result data
+    if (Array.isArray(data)) {
+        data.forEach(item => {
+            if (item.TC) searchTerms.push(item.TC);
+            if (item.GSM) searchTerms.push(item.GSM);
+            if (item.ADI && item.SOYADI) searchTerms.push(`${item.ADI} ${item.SOYADI}`);
+        });
+    } else if (data && typeof data === 'object') {
+        if (data.TC) searchTerms.push(data.TC);
+        if (data.GSM) searchTerms.push(data.GSM);
+        if (data.iban) searchTerms.push(data.iban);
+        if (data.accountHolder && data.accountHolder.name) {
+            searchTerms.push(data.accountHolder.name);
+        }
+        if (data.ADI && data.SOYADI) searchTerms.push(`${data.ADI} ${data.SOYADI}`);
+    }
+    
+    if (searchTerms.length === 0) {
+        showToast('Super Search için uygun veri bulunamadı!', 'error');
+        return;
+    }
+    
+    // Switch to Super Search page
+    showPage('supersearch');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelector('[data-page="supersearch"]').classList.add('active');
+    
+    // Perform comprehensive search for each term
+    const allResults = {};
+    
+    showToast(`${searchTerms.length} veri için kapsamlı Super Search başlatılıyor...`, 'success');
+    
+    for (const term of searchTerms) {
+        await performComprehensiveSearch(term, allResults);
+    }
+    
+    // Display unified results
+    displayUnifiedSuperSearchResults(allResults, searchTerms);
+}
+
+// Comprehensive search for a single term
+async function performComprehensiveSearch(searchTerm, allResults) {
+    const detectedTypes = detectInputType(searchTerm);
+    const results = {};
+    const searchPromises = [];
+    
+    // Determine search types based on detected type
+    for (const typeInfo of detectedTypes) {
+        const { type } = typeInfo;
+        
+        switch (type) {
+            case 'tc':
+                searchPromises.push(performTCSearch(searchTerm, results));
+                searchPromises.push(performAdresSearch(searchTerm, results));
+                searchPromises.push(performIsyeriSearch(searchTerm, results));
+                searchPromises.push(performSulaleSearch(searchTerm, results));
+                searchPromises.push(performTcGsmSearch(searchTerm, results));
+                break;
+            case 'gsm':
+                searchPromises.push(performGsmTcSearch(searchTerm, results));
+                break;
+            case 'iban':
+                searchPromises.push(performIBANSearch(searchTerm, results));
+                searchPromises.push(performIBANHesapSearch(searchTerm, results));
+                break;
+            case 'ip':
+                searchPromises.push(performIPSearch(searchTerm, results));
+                break;
+            case 'adsoyad':
+                searchPromises.push(performAdSoyadSearch(searchTerm, results));
+                break;
+        }
+    }
+    
+    // Wait for all searches to complete
+    await Promise.allSettled(searchPromises);
+    
+    // Store results for this search term
+    allResults[searchTerm] = results;
+}
+
+// IBAN Account Holder search for Super Search
+async function performIBANHesapSearch(iban, results) {
+    try {
+        results.ibanhesap = { status: 'loading', type: 'IBAN Hesap Sahibi' };
+        const data = await makeApiRequest('ibanhesap', { iban });
+        results.ibanhesap = { status: 'success', type: 'IBAN Hesap Sahibi', data };
+    } catch (error) {
+        results.ibanhesap = { status: 'error', type: 'IBAN Hesap Sahibi', error: error.message };
+    }
+}
+
+// Display unified Super Search results in single table format
+function displayUnifiedSuperSearchResults(allResults, searchTerms) {
+    const container = document.getElementById('supersearchResults');
+    
+    if (Object.keys(allResults).length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                <h3>Sonuç Bulunamadı</h3>
+                <p>Super Search için sonuç bulunamadı.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Collect all successful results into a unified table
+    const unifiedData = [];
+    
+    Object.entries(allResults).forEach(([searchTerm, results]) => {
+        Object.entries(results).forEach(([queryType, result]) => {
+            if (result.status === 'success' && result.data) {
+                let data = result.data;
+                
+                // Handle different data formats
+                if (data.success && data.data && Array.isArray(data.data)) {
+                    data = data.data;
+                } else if (!Array.isArray(data)) {
+                    data = [data];
+                }
+                
+                // Add each record to unified data
+                data.forEach(record => {
+                    const unifiedRecord = {
+                        'ARAMA_TERIMI': searchTerm,
+                        'SORGU_TURU': result.type,
+                        ...record
+                    };
+                    unifiedData.push(unifiedRecord);
+                });
+            }
+        });
+    });
+    
+    if (unifiedData.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #999;">
+                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
+                <h3>Veri Bulunamadı</h3>
+                <p>Super Search sonuçlarında veri bulunamadı.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Display unified results as single table
+    const headerInfo = `
+        <div class="results-header">
+            <h4><i class="fas fa-search-plus"></i> Super Search Birleşik Sonuçlar</h4>
+            <div class="results-count">
+                <span class="count-badge">
+                    <i class="fas fa-database"></i>
+                    ${unifiedData.length} toplam kayıt - ${searchTerms.length} arama terimi
+                </span>
+            </div>
+        </div>
+    `;
+    
+    displayEnhancedTable(container, unifiedData, 'Super Search Unified Results', headerInfo);
+    
+    // Add action buttons
+    addActionButtons(container, unifiedData, 'Super Search Unified');
+    
+    showToast(`Super Search tamamlandı! ${unifiedData.length} kayıt bulundu.`, 'success');
 }
