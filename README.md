@@ -5,6 +5,7 @@ Atlas Panel, kapsamlı veri sorgulama ve analiz yetenekleri sunan güvenli bir w
 ## 🚀 Canlı Demo
 
 - **Railway**: https://atlaspanelfreeatat.up.railway.app
+- **Render**: https://atlaspanel.onrender.com
 - **GitHub**: https://github.com/afedevresmi/atlas
 - **GitHub**: https://github.com/afedevresmi/atlas
 
@@ -157,7 +158,7 @@ JWT_SECRET=your-secret-key-here
 ## 🚀 Deployment Durumu
 
 ### ✅ Railway Deployment
-- **URL**: https://atlasfreeatat.up.railway.app
+- **URL**: https://atlaspanelfreeatat.up.railway.app
 - **Status**: Aktif ve çalışıyor
 - **Auto Deploy**: GitHub push ile otomatik deployment
 
@@ -169,7 +170,7 @@ JWT_SECRET=your-secret-key-here
 ### 🔄 Deployment Pipeline
 1. GitHub'a kod push edilir
 2. Railway ve Render otomatik olarak yeni versiyonu deploy eder
-3. Health check ile servis durumu kontrol edilir
+3. Demo mode ile harici API'ler çalışmasa bile sistem aktif kalır
 4. Canlı ortamda yeni özellikler aktif olur
 
 ## 📊 Sistem Özellikleri
