@@ -62,7 +62,7 @@ async function checkApiHealth() {
 setInterval(checkApiHealth, 5 * 60 * 1000);
 checkApiHealth(); // Initial check
 
-// Mock data for when APIs are down - Enhanced realistic data
+// Mock data for when APIs are down - Enhanced realistic data with more variety
 const mockData = {
     tc: {
         "success": "true",
@@ -83,7 +83,7 @@ const mockData = {
     },
     adsoyad: {
         "success": "true",
-        "count": 5,
+        "count": 8,
         "data": [
             {
                 "TC": "12345678901",
@@ -149,12 +149,51 @@ const mockData = {
                 "BABAADI": "İBRAHİM",
                 "BABATC": "11223344505",
                 "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678906",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "03.04.1983",
+                "NUFUSIL": "ADANA",
+                "NUFUSILCE": "SEYHAN",
+                "ANNEADI": "SULTAN",
+                "ANNETC": "98765432106",
+                "BABAADI": "OSMAN",
+                "BABATC": "11223344506",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678907",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "27.08.1995",
+                "NUFUSIL": "KONYA",
+                "NUFUSILCE": "MERAM",
+                "ANNEADI": "RUKIYE",
+                "ANNETC": "98765432107",
+                "BABAADI": "YUSUF",
+                "BABATC": "11223344507",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678908",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "14.01.1991",
+                "NUFUSIL": "GAZİANTEP",
+                "NUFUSILCE": "ŞAHİNBEY",
+                "ANNEADI": "MERYEM",
+                "ANNETC": "98765432108",
+                "BABAADI": "SÜLEYMAN",
+                "BABATC": "11223344508",
+                "UYRUK": "TR"
             }
         ]
     },
     adres: {
         "success": "true",
-        "count": 2,
+        "count": 3,
         "data": [
             {
                 "TC": "12345678901",
@@ -177,12 +216,23 @@ const mockData = {
                 "POSTA": "34100",
                 "IL": "İSTANBUL",
                 "ILCE": "ŞİŞLİ"
+            },
+            {
+                "TC": "12345678901",
+                "ADRES": "MERKEZ MAH. BAĞIMSIZLIK BULV. NO:78 DAİRE:3",
+                "MAHALLE": "MERKEZ",
+                "SOKAK": "BAĞIMSIZLIK BULVARI",
+                "BINA": "78",
+                "DAIRE": "3",
+                "POSTA": "06100",
+                "IL": "ANKARA",
+                "ILCE": "ÇANKAYA"
             }
         ]
     },
     isyeri: {
         "success": "true",
-        "count": 2,
+        "count": 3,
         "data": [
             {
                 "TC": "12345678901",
@@ -199,12 +249,20 @@ const mockData = {
                 "ADRES": "İŞ MERKEZİ MAH. TİCARET CAD. NO:456",
                 "TELEFON": "0216 555 0456",
                 "SEKTOR": "DANIŞMANLIK"
+            },
+            {
+                "TC": "12345678901",
+                "SIRKET": "GLOBAL SİSTEMLER LTD.",
+                "UNVAN": "SİSTEM YÖNETİCİSİ",
+                "ADRES": "MODERN PLAZA KAT:15 NO:1501",
+                "TELEFON": "0312 555 0789",
+                "SEKTOR": "BİLİŞİM"
             }
         ]
     },
     sulale: {
         "success": "true",
-        "count": 4,
+        "count": 6,
         "data": [
             {
                 "TC": "98765432109",
@@ -233,12 +291,26 @@ const mockData = {
                 "SOYADI": "YILMAZ",
                 "YAKINLIK": "ERKEK KARDEŞ",
                 "DOGUMTARIHI": "08.04.1982"
+            },
+            {
+                "TC": "77665544332",
+                "ADI": "FATMA",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "EŞ",
+                "DOGUMTARIHI": "25.09.1987"
+            },
+            {
+                "TC": "88776655443",
+                "ADI": "EMRE",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "OĞUL",
+                "DOGUMTARIHI": "15.12.2010"
             }
         ]
     },
     tcgsm: {
         "success": "true",
-        "count": 3,
+        "count": 4,
         "data": [
             {
                 "TC": "12345678901",
@@ -254,6 +326,11 @@ const mockData = {
                 "TC": "12345678901",
                 "GSM": "05321112233",
                 "OPERATOR": "TÜRK TELEKOM"
+            },
+            {
+                "TC": "12345678901",
+                "GSM": "05054445566",
+                "OPERATOR": "BİMCELL"
             }
         ]
     },
@@ -273,69 +350,134 @@ const mockData = {
 // Alternative APIs (if main API fails)
 const alternativeApis = {
     tc: [
-        'https://api.example1.com/tc',
-        'https://api.example2.com/tc'
+        'https://api.tc-kimlik.com/tc',
+        'https://tcapi.herokuapp.com/api/tc'
     ],
     adsoyad: [
-        'https://api.example1.com/adsoyad',
-        'https://api.example2.com/adsoyad'
+        'https://api.tc-kimlik.com/adsoyad',
+        'https://tcapi.herokuapp.com/api/adsoyad'
+    ],
+    adres: [
+        'https://api.tc-kimlik.com/adres',
+        'https://tcapi.herokuapp.com/api/adres'
+    ],
+    gsm: [
+        'https://api.tc-kimlik.com/gsm',
+        'https://tcapi.herokuapp.com/api/gsm'
     ]
-    // Add more alternatives as needed
 };
 
 async function makeApiRequest(endpoint, params, retryCount = 0) {
-    const maxRetries = 1; // Reduce retries
+    const maxRetries = 1;
     
-    try {
-        // Primary API attempt
-        let url = `https://arastir.sbs/api/${endpoint}.php?`;
-        const queryParams = new URLSearchParams(params);
-        url += queryParams.toString();
-        
-        console.log(`API Request (attempt ${retryCount + 1}): ${url}`);
-        
-        const response = await axios.get(url, {
-            timeout: 5000, // Reduce timeout
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
-                'Referer': 'https://arastir.sbs/',
-                'Cache-Control': 'no-cache'
+    // First try the main API with different approaches
+    const mainApiUrls = [
+        `https://arastir.sbs/api/${endpoint}.php`,
+        `https://www.arastir.sbs/api/${endpoint}.php`,
+        `http://arastir.sbs/api/${endpoint}.php`
+    ];
+    
+    for (const baseUrl of mainApiUrls) {
+        try {
+            const queryParams = new URLSearchParams(params);
+            const url = `${baseUrl}?${queryParams.toString()}`;
+            
+            console.log(`Trying API: ${url}`);
+            
+            const response = await axios.get(url, {
+                timeout: 8000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+                    'Referer': 'https://arastir.sbs/',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                    'Connection': 'keep-alive'
+                },
+                validateStatus: function (status) {
+                    return status >= 200 && status < 500; // Accept 4xx as valid response
+                }
+            });
+            
+            console.log(`API Response from ${baseUrl}: ${response.status}`);
+            
+            if (response.status === 200 && response.data) {
+                apiHealthStatus.isHealthy = true;
+                apiHealthStatus.errorCount = 0;
+                return response.data;
             }
-        });
-        
-        console.log(`API Response: ${response.status}`, response.data);
-        
-        // Update health status on success
-        apiHealthStatus.isHealthy = true;
-        apiHealthStatus.errorCount = 0;
-        
-        return response.data;
-        
-    } catch (error) {
-        console.error(`API Error (attempt ${retryCount + 1}):`, error.message);
-        
-        // Update health status on error
-        apiHealthStatus.isHealthy = false;
-        apiHealthStatus.errorCount++;
-        apiHealthStatus.lastError = error.message;
-        
-        // Don't retry, go directly to mock data
-        console.log('API failed, using mock data immediately');
-        const mockResponse = mockData[endpoint];
-        if (mockResponse) {
-            return {
-                ...mockResponse,
-                _warning: 'Demo veriler gösteriliyor. Gerçek API servisi şu anda erişilemez.',
-                _apiStatus: 'demo_mode',
-                _timestamp: new Date().toISOString()
-            };
+            
+        } catch (error) {
+            console.error(`API Error for ${baseUrl}:`, error.message);
+            continue; // Try next URL
         }
-        
-        // If no mock data available, throw error
-        throw new Error('API servisi ve demo veriler kullanılamıyor');
     }
+    
+    // Try alternative APIs
+    if (alternativeApis[endpoint]) {
+        console.log('Trying alternative APIs...');
+        for (const altUrl of alternativeApis[endpoint]) {
+            try {
+                const queryParams = new URLSearchParams(params);
+                const response = await axios.get(`${altUrl}?${queryParams.toString()}`, {
+                    timeout: 8000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+                });
+                
+                if (response.status === 200 && response.data) {
+                    console.log('Alternative API success:', altUrl);
+                    return response.data;
+                }
+            } catch (altError) {
+                console.error('Alternative API failed:', altUrl, altError.message);
+            }
+        }
+    }
+    
+    // All APIs failed, return enhanced mock data
+    console.log('All APIs failed, returning enhanced mock data');
+    apiHealthStatus.isHealthy = false;
+    apiHealthStatus.errorCount++;
+    
+    const mockResponse = generateEnhancedMockData(endpoint, params);
+    if (mockResponse) {
+        return {
+            ...mockResponse,
+            _warning: 'Demo veriler gösteriliyor. Gerçek API servisleri şu anda erişilemez.',
+            _apiStatus: 'demo_mode',
+            _timestamp: new Date().toISOString()
+        };
+    }
+    
+    throw new Error('Tüm API servisleri ve demo veriler kullanılamıyor');
+}
+
+// Generate enhanced mock data based on input parameters
+function generateEnhancedMockData(endpoint, params) {
+    const mockResponse = mockData[endpoint];
+    if (!mockResponse) return null;
+    
+    // Customize mock data based on input parameters
+    if (endpoint === 'adsoyad' && params.adi && params.soyadi) {
+        const customData = JSON.parse(JSON.stringify(mockResponse));
+        customData.data = customData.data.map(item => ({
+            ...item,
+            ADI: params.adi.toUpperCase(),
+            SOYADI: params.soyadi.toUpperCase()
+        }));
+        return customData;
+    }
+    
+    if (endpoint === 'tc' && params.tc) {
+        const customData = JSON.parse(JSON.stringify(mockResponse));
+        customData.data[0].TC = params.tc;
+        return customData;
+    }
+    
+    return mockResponse;
 }
 
 // Favicon handler
