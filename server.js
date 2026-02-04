@@ -308,18 +308,19 @@ const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
+        return res.status(401).json({ error: 'Oturum açmanız gerekiyor' });
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            return res.status(403).json({ error: 'Invalid token' });
+            console.log('Token verification error:', err.message);
+            return res.status(401).json({ error: 'Oturum süresi dolmuş, lütfen tekrar giriş yapın' });
         }
         
         // Check if user is still active
         const dbUser = users.find(u => u.username === user.username);
         if (!dbUser || !dbUser.active) {
-            return res.status(403).json({ error: 'User account is inactive' });
+            return res.status(403).json({ error: 'Kullanıcı hesabı aktif değil' });
         }
         
         req.user = user;
@@ -364,7 +365,7 @@ app.post('/api/login', (req, res) => {
             username: user.username, 
             role: user.role,
             id: user.id 
-        }, JWT_SECRET, { expiresIn: '24h' });
+        }, JWT_SECRET, { expiresIn: '7d' }); // 7 gün
         res.json({ 
             token, 
             message: 'Login successful',

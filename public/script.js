@@ -298,7 +298,6 @@ function animateNumbers() {
 async function makeApiRequest(endpoint, params = {}) {
     if (!authToken) {
         showToast('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.', 'error');
-        handleLogout();
         return null;
     }
     
@@ -314,9 +313,10 @@ async function makeApiRequest(endpoint, params = {}) {
         
         console.log(`API response status: ${response.status}`);
         
-        if (response.status === 401 || response.status === 403) {
+        // Don't logout on API errors, only on auth errors
+        if (response.status === 401) {
             showToast('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.', 'error');
-            handleLogout();
+            setTimeout(() => handleLogout(), 2000);
             return null;
         }
         
@@ -328,7 +328,7 @@ async function makeApiRequest(endpoint, params = {}) {
             setTimeout(loadStats, 500);
             return data;
         } else {
-            // Enhanced error handling with user-friendly messages
+            // Show error but don't logout
             let errorMessage = data.error || 'API hatası';
             
             if (data.suggestion) {
@@ -338,12 +338,13 @@ async function makeApiRequest(endpoint, params = {}) {
             if (response.status === 408) {
                 errorMessage = 'API zaman aşımı - Lütfen tekrar deneyin';
             } else if (response.status === 503) {
-                errorMessage = 'Harici servis geçici olarak kullanılamıyor - Lütfen daha sonra tekrar deneyin';
+                errorMessage = 'Harici servis geçici olarak kullanılamıyor';
             } else if (response.status >= 500) {
                 errorMessage = 'Sunucu hatası - Lütfen daha sonra tekrar deneyin';
             }
             
-            throw new Error(errorMessage);
+            showToast(errorMessage, 'error');
+            return null;
         }
     } catch (error) {
         console.error('API request failed:', error);
@@ -1469,59 +1470,71 @@ function addActionButtons(container, data, queryType) {
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'action-buttons';
     
-    // Super Search Button (NEW)
-    const superSearchBtn = document.createElement('button');
-    superSearchBtn.innerHTML = '<i class="fas fa-search-plus"></i> Bu Kişi Super Search';
-    superSearchBtn.className = 'action-btn super-search-btn';
-    superSearchBtn.addEventListener('click', () => performSuperSearchFromResult(data, queryType));
+    // Only show Super Search button for meaningful data
+    if (shouldShowSuperSearchButton(data, queryType)) {
+        const superSearchBtn = document.createElement('button');
+        superSearchBtn.innerHTML = '<i class="fas fa-search-plus"></i> Bu Kişi Super Search';
+        superSearchBtn.className = 'action-btn super-search-btn';
+        superSearchBtn.addEventListener('click', () => performSuperSearchFromResult(data, queryType));
+        actionsDiv.appendChild(superSearchBtn);
+    }
     
     // Clear Results Button
     const clearBtn = document.createElement('button');
-    clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sorgu Temizle';
+    clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sonuçları Temizle';
     clearBtn.className = 'action-btn clear-btn';
     clearBtn.addEventListener('click', () => clearResults(container.id));
     
-    // Export to Excel Button
-    const exportBtn = document.createElement('button');
-    exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Excel\'e Aktar';
-    exportBtn.className = 'action-btn export-btn';
-    exportBtn.addEventListener('click', () => exportToExcel(data, queryType));
+    // Export to Excel Button - only for table data
+    if (Array.isArray(data) && data.length > 0) {
+        const exportBtn = document.createElement('button');
+        exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Excel\'e Aktar';
+        exportBtn.className = 'action-btn export-btn';
+        exportBtn.addEventListener('click', () => exportToExcel(data, queryType));
+        actionsDiv.appendChild(exportBtn);
+    }
     
-    // Copy Table Button
-    const copyTableBtn = document.createElement('button');
-    copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
-    copyTableBtn.className = 'action-btn copy-table-btn';
-    copyTableBtn.addEventListener('click', () => {
-        copyTableBtn.classList.add('loading');
-        setTimeout(() => {
-            copyTableToClipboard(container, data);
-            copyTableBtn.classList.remove('loading');
-            copyTableBtn.classList.add('copy-success');
-            setTimeout(() => copyTableBtn.classList.remove('copy-success'), 600);
-        }, 100);
-    });
+    // Copy Table Button - only for table data
+    if (Array.isArray(data) && data.length > 0) {
+        const copyTableBtn = document.createElement('button');
+        copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
+        copyTableBtn.className = 'action-btn copy-table-btn';
+        copyTableBtn.addEventListener('click', () => {
+            copyTableBtn.classList.add('loading');
+            setTimeout(() => {
+                copyTableToClipboard(container, data);
+                copyTableBtn.classList.remove('loading');
+                copyTableBtn.classList.add('copy-success');
+                setTimeout(() => copyTableBtn.classList.remove('copy-success'), 600);
+            }, 100);
+        });
+        actionsDiv.appendChild(copyTableBtn);
+    }
     
-    // Copy JSON Button
-    const copyBtn = document.createElement('button');
-    copyBtn.innerHTML = '<i class="fas fa-copy"></i> JSON Kopyala';
-    copyBtn.className = 'action-btn copy-btn';
-    copyBtn.addEventListener('click', () => {
-        copyBtn.classList.add('loading');
-        setTimeout(() => {
-            copyToClipboard(JSON.stringify(data, null, 2));
-            copyBtn.classList.remove('loading');
-            copyBtn.classList.add('copy-success');
-            setTimeout(() => copyBtn.classList.remove('copy-success'), 600);
-        }, 100);
-    });
-    
-    actionsDiv.appendChild(superSearchBtn);
     actionsDiv.appendChild(clearBtn);
-    actionsDiv.appendChild(exportBtn);
-    actionsDiv.appendChild(copyTableBtn);
-    actionsDiv.appendChild(copyBtn);
-    
     container.appendChild(actionsDiv);
+}
+
+// Check if Super Search button should be shown
+function shouldShowSuperSearchButton(data, queryType) {
+    // Don't show for IP or IBAN queries
+    if (queryType.includes('IP') || queryType.includes('IBAN')) {
+        return false;
+    }
+    
+    // Don't show for Super Search results
+    if (queryType.includes('Super Search')) {
+        return false;
+    }
+    
+    // Check if data contains searchable information
+    if (Array.isArray(data)) {
+        return data.some(item => item.TC || item.GSM || (item.ADI && item.SOYADI));
+    } else if (data && typeof data === 'object') {
+        return data.TC || data.GSM || (data.ADI && data.SOYADI);
+    }
+    
+    return false;
 }
 
 // New function to copy table data in a readable format
@@ -3165,4 +3178,17 @@ function displayUnifiedSuperSearchResults(allResults, searchTerms) {
     addActionButtons(container, unifiedData, 'Super Search Unified');
     
     showToast(`Super Search tamamlandı! ${unifiedData.length} kayıt bulundu.`, 'success');
+}
+// Clear results function
+function clearResults(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #888;">
+                <div style="font-size: 3rem; margin-bottom: 15px;"><i class="fas fa-search" style="opacity: 0.3;"></i></div>
+                <h3>Sonuçlar Temizlendi</h3>
+                <p>Yeni bir sorgu yapmak için yukarıdaki formu kullanın.</p>
+            </div>
+        `;
+    }
 }
