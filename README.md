@@ -4,8 +4,8 @@ Atlas Panel, kapsamlı veri sorgulama ve analiz yetenekleri sunan güvenli bir w
 
 ## 🚀 Canlı Demo
 
-- **Railway**: https://atlasfreeatat.up.railway.app
-- **Render**: https://atlaspanel.onrender.com
+- **Railway**: https://atlaspanelfreeatat.up.railway.app
+- **GitHub**: https://github.com/afedevresmi/atlas
 - **GitHub**: https://github.com/afedevresmi/atlas
 
 ## ✨ Özellikler

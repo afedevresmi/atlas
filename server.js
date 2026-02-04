@@ -62,19 +62,19 @@ async function checkApiHealth() {
 setInterval(checkApiHealth, 5 * 60 * 1000);
 checkApiHealth(); // Initial check
 
-// Mock data for when APIs are down
+// Mock data for when APIs are down - Enhanced realistic data
 const mockData = {
     tc: {
         "success": "true",
         "count": 1,
         "data": [{
             "TC": "12345678901",
-            "ADI": "ÖRNEK",
-            "SOYADI": "KULLANICI",
-            "DOGUMTARIHI": "01.01.1990",
+            "ADI": "AHMET",
+            "SOYADI": "YILMAZ",
+            "DOGUMTARIHI": "15.03.1985",
             "NUFUSIL": "İSTANBUL",
             "NUFUSILCE": "BEYOĞLU",
-            "ANNEADI": "FATMA",
+            "ANNEADI": "AYŞE",
             "ANNETC": "98765432109",
             "BABAADI": "MEHMET",
             "BABATC": "11223344556",
@@ -83,18 +83,18 @@ const mockData = {
     },
     adsoyad: {
         "success": "true",
-        "count": 3,
+        "count": 5,
         "data": [
             {
                 "TC": "12345678901",
                 "ADI": "AHMET",
                 "SOYADI": "YILMAZ",
                 "DOGUMTARIHI": "15.03.1985",
-                "NUFUSIL": "ANKARA",
-                "NUFUSILCE": "ÇANKAYA",
+                "NUFUSIL": "İSTANBUL",
+                "NUFUSILCE": "BEYOĞLU",
                 "ANNEADI": "AYŞE",
-                "ANNETC": "98765432101",
-                "BABAADI": "MUSTAFA",
+                "ANNETC": "98765432109",
+                "BABAADI": "MEHMET",
                 "BABATC": "11223344501",
                 "UYRUK": "TR"
             },
@@ -103,8 +103,8 @@ const mockData = {
                 "ADI": "AHMET",
                 "SOYADI": "YILMAZ",
                 "DOGUMTARIHI": "22.07.1992",
-                "NUFUSIL": "İZMİR",
-                "NUFUSILCE": "KONAK",
+                "NUFUSIL": "ANKARA",
+                "NUFUSILCE": "ÇANKAYA",
                 "ANNEADI": "ZEYNEP",
                 "ANNETC": "98765432102",
                 "BABAADI": "ALİ",
@@ -116,50 +116,99 @@ const mockData = {
                 "ADI": "AHMET",
                 "SOYADI": "YILMAZ",
                 "DOGUMTARIHI": "10.12.1988",
-                "NUFUSIL": "BURSA",
-                "NUFUSILCE": "OSMANGAZI",
+                "NUFUSIL": "İZMİR",
+                "NUFUSILCE": "KONAK",
                 "ANNEADI": "HATICE",
                 "ANNETC": "98765432103",
                 "BABAADI": "HASAN",
                 "BABATC": "11223344503",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678904",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "05.09.1990",
+                "NUFUSIL": "BURSA",
+                "NUFUSILCE": "OSMANGAZI",
+                "ANNEADI": "FATMA",
+                "ANNETC": "98765432104",
+                "BABAADI": "MUSTAFA",
+                "BABATC": "11223344504",
+                "UYRUK": "TR"
+            },
+            {
+                "TC": "12345678905",
+                "ADI": "AHMET",
+                "SOYADI": "YILMAZ",
+                "DOGUMTARIHI": "18.11.1987",
+                "NUFUSIL": "ANTALYA",
+                "NUFUSILCE": "MURATPAŞA",
+                "ANNEADI": "EMINE",
+                "ANNETC": "98765432105",
+                "BABAADI": "İBRAHİM",
+                "BABATC": "11223344505",
                 "UYRUK": "TR"
             }
         ]
     },
     adres: {
         "success": "true",
-        "count": 1,
-        "data": [{
-            "TC": "12345678901",
-            "ADRES": "ATATÜRK MAH. CUMHURİYET CAD. NO:123 DAİRE:5",
-            "MAHALLE": "ATATÜRK",
-            "SOKAK": "CUMHURİYET CADDESİ",
-            "BINA": "123",
-            "DAIRE": "5",
-            "POSTA": "34000",
-            "IL": "İSTANBUL",
-            "ILCE": "BEYOĞLU"
-        }]
+        "count": 2,
+        "data": [
+            {
+                "TC": "12345678901",
+                "ADRES": "ATATÜRK MAH. CUMHURİYET CAD. NO:123 DAİRE:5",
+                "MAHALLE": "ATATÜRK",
+                "SOKAK": "CUMHURİYET CADDESİ",
+                "BINA": "123",
+                "DAIRE": "5",
+                "POSTA": "34000",
+                "IL": "İSTANBUL",
+                "ILCE": "BEYOĞLU"
+            },
+            {
+                "TC": "12345678901",
+                "ADRES": "YENİ MAH. ÖZGÜRLÜK SOK. NO:45 DAİRE:12",
+                "MAHALLE": "YENİ",
+                "SOKAK": "ÖZGÜRLÜK SOKAK",
+                "BINA": "45",
+                "DAIRE": "12",
+                "POSTA": "34100",
+                "IL": "İSTANBUL",
+                "ILCE": "ŞİŞLİ"
+            }
+        ]
     },
     isyeri: {
-        "success": "true",
-        "count": 1,
-        "data": [{
-            "TC": "12345678901",
-            "SIRKET": "ÖRNEK TİCARET LTD. ŞTİ.",
-            "UNVAN": "GENEL MÜDÜR",
-            "ADRES": "İŞ MERKEZİ MAH. TİCARET CAD. NO:456",
-            "TELEFON": "0212 555 0123",
-            "SEKTOR": "BİLİŞİM"
-        }]
-    },
-    sulale: {
         "success": "true",
         "count": 2,
         "data": [
             {
+                "TC": "12345678901",
+                "SIRKET": "ATLAS TEKNOLOJİ LTD. ŞTİ.",
+                "UNVAN": "YAZILIM GELİŞTİRİCİ",
+                "ADRES": "TEKNOLOJİ MAH. İNOVASYON CAD. NO:100",
+                "TELEFON": "0212 555 0123",
+                "SEKTOR": "BİLİŞİM"
+            },
+            {
+                "TC": "12345678901",
+                "SIRKET": "DİJİTAL ÇÖZÜMLER A.Ş.",
+                "UNVAN": "PROJE YÖNETİCİSİ",
+                "ADRES": "İŞ MERKEZİ MAH. TİCARET CAD. NO:456",
+                "TELEFON": "0216 555 0456",
+                "SEKTOR": "DANIŞMANLIK"
+            }
+        ]
+    },
+    sulale: {
+        "success": "true",
+        "count": 4,
+        "data": [
+            {
                 "TC": "98765432109",
-                "ADI": "FATMA",
+                "ADI": "AYŞE",
                 "SOYADI": "YILMAZ",
                 "YAKINLIK": "ANNE",
                 "DOGUMTARIHI": "05.08.1965"
@@ -170,12 +219,26 @@ const mockData = {
                 "SOYADI": "YILMAZ",
                 "YAKINLIK": "BABA",
                 "DOGUMTARIHI": "12.11.1960"
+            },
+            {
+                "TC": "55443322110",
+                "ADI": "ZEYNEP",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "KIZ KARDEŞ",
+                "DOGUMTARIHI": "20.06.1990"
+            },
+            {
+                "TC": "66554433221",
+                "ADI": "MURAT",
+                "SOYADI": "YILMAZ",
+                "YAKINLIK": "ERKEK KARDEŞ",
+                "DOGUMTARIHI": "08.04.1982"
             }
         ]
     },
     tcgsm: {
         "success": "true",
-        "count": 2,
+        "count": 3,
         "data": [
             {
                 "TC": "12345678901",
@@ -186,6 +249,11 @@ const mockData = {
                 "TC": "12345678901",
                 "GSM": "05559876543",
                 "OPERATOR": "VODAFONE"
+            },
+            {
+                "TC": "12345678901",
+                "GSM": "05321112233",
+                "OPERATOR": "TÜRK TELEKOM"
             }
         ]
     },
@@ -195,8 +263,8 @@ const mockData = {
         "data": [{
             "GSM": "05551234567",
             "TC": "12345678901",
-            "ADI": "ÖRNEK",
-            "SOYADI": "KULLANICI",
+            "ADI": "AHMET",
+            "SOYADI": "YILMAZ",
             "OPERATOR": "TURKCELL"
         }]
     }
@@ -216,7 +284,7 @@ const alternativeApis = {
 };
 
 async function makeApiRequest(endpoint, params, retryCount = 0) {
-    const maxRetries = 2;
+    const maxRetries = 1; // Reduce retries
     
     try {
         // Primary API attempt
@@ -227,7 +295,7 @@ async function makeApiRequest(endpoint, params, retryCount = 0) {
         console.log(`API Request (attempt ${retryCount + 1}): ${url}`);
         
         const response = await axios.get(url, {
-            timeout: 15000,
+            timeout: 5000, // Reduce timeout
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
@@ -253,47 +321,20 @@ async function makeApiRequest(endpoint, params, retryCount = 0) {
         apiHealthStatus.errorCount++;
         apiHealthStatus.lastError = error.message;
         
-        // Retry logic
-        if (retryCount < maxRetries) {
-            console.log(`Retrying in 2 seconds... (${retryCount + 1}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            return makeApiRequest(endpoint, params, retryCount + 1);
-        }
-        
-        // If all retries failed, try alternative APIs
-        if (alternativeApis[endpoint] && alternativeApis[endpoint].length > 0) {
-            console.log('Trying alternative APIs...');
-            for (const altUrl of alternativeApis[endpoint]) {
-                try {
-                    const queryParams = new URLSearchParams(params);
-                    const response = await axios.get(`${altUrl}?${queryParams.toString()}`, {
-                        timeout: 10000,
-                        headers: {
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        }
-                    });
-                    console.log('Alternative API success:', altUrl);
-                    return response.data;
-                } catch (altError) {
-                    console.error('Alternative API failed:', altUrl, altError.message);
-                }
-            }
-        }
-        
-        // If everything fails, return mock data with warning
-        console.log('All APIs failed, returning mock data');
+        // Don't retry, go directly to mock data
+        console.log('API failed, using mock data immediately');
         const mockResponse = mockData[endpoint];
         if (mockResponse) {
             return {
                 ...mockResponse,
-                _warning: 'Bu veriler örnek verilerdir. Ana API servisi şu anda erişilemez durumda.',
-                _apiStatus: 'offline',
+                _warning: 'Demo veriler gösteriliyor. Gerçek API servisi şu anda erişilemez.',
+                _apiStatus: 'demo_mode',
                 _timestamp: new Date().toISOString()
             };
         }
         
         // If no mock data available, throw error
-        throw error;
+        throw new Error('API servisi ve demo veriler kullanılamıyor');
     }
 }
 
