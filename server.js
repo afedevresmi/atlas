@@ -2366,13 +2366,13 @@ function generateIbanRecommendations(validation, security, analytics) {
     return recommendations;
 }
 
-// Export for Vercel
-module.exports = app;
-// Local development server
-if (require.main === module) {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Atlas Panel Server running on http://0.0.0.0:${PORT}`);
-    });
+// Format IBAN with spaces for display
+function formatIban(iban) {
+    return iban.replace(/(.{4})/g, '$1 ').trim();
 }
-// Railway deployment trigger
-console.log('Atlas Panel starting on port:', PORT);
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Atlas Panel Server running on http://0.0.0.0:${PORT}`);
+    console.log('Atlas Panel starting on port:', PORT);
+});
