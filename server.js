@@ -10,6 +10,32 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'atlas-panel-secret-key-2024';
 
+// Axios default config
+axios.defaults.timeout = 10000;
+axios.defaults.headers.common['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
+
+// Helper function for API requests with retry
+async function makeExternalApiRequest(url, retries = 3) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await axios.get(url, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+                    'Referer': 'https://arastir.sbs/'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error(`API Request failed (attempt ${i + 1}/${retries}):`, error.message);
+            if (i === retries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+        }
+    }
+}
+
 // Users database (in production, use a real database)
 let users = [
     { id: 1, username: 'admin', password: 'atlas2024', role: 'admin', active: true, createdAt: new Date() },
@@ -211,8 +237,8 @@ app.get('/api/tc', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/tc.php?tc=${tc}`);
+        res.json(data);
     } catch (error) {
         console.error('TC API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -225,8 +251,8 @@ app.get('/api/adres', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/adres.php?tc=${tc}`);
+        res.json(data);
     } catch (error) {
         console.error('Adres API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -239,8 +265,8 @@ app.get('/api/isyeri', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/isyeri.php?tc=${tc}`);
+        res.json(data);
     } catch (error) {
         console.error('Isyeri API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -253,8 +279,8 @@ app.get('/api/sulale', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/sulale.php?tc=${tc}`);
+        res.json(data);
     } catch (error) {
         console.error('Sulale API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -267,8 +293,8 @@ app.get('/api/tcgsm', authenticateToken, trackQuery, async (req, res) => {
         if (!tc) {
             return res.status(400).json({ error: 'TC parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`);
+        res.json(data);
     } catch (error) {
         console.error('TCGSM API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -281,8 +307,8 @@ app.get('/api/gsmtc', authenticateToken, trackQuery, async (req, res) => {
         if (!gsm) {
             return res.status(400).json({ error: 'GSM parameter required' });
         }
-        const response = await axios.get(`https://arastir.sbs/api/gsmtc.php?gsm=${gsm}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/gsmtc.php?gsm=${gsm}`);
+        res.json(data);
     } catch (error) {
         console.error('GSMTC API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
@@ -301,8 +327,8 @@ app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
         if (il) queryString += `&il=${il}`;
         if (ilce) queryString += `&ilce=${ilce}`;
         
-        const response = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`);
-        res.json(response.data);
+        const data = await makeExternalApiRequest(`https://arastir.sbs/api/adsoyad.php?${queryString}`);
+        res.json(data);
     } catch (error) {
         console.error('Adsoyad API Error:', error.message);
         res.status(500).json({ error: 'API request failed', details: error.message });
