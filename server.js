@@ -214,7 +214,8 @@ app.get('/api/tc', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/tc.php?tc=${tc}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TC API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -227,7 +228,8 @@ app.get('/api/adres', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/adres.php?tc=${tc}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Adres API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -240,7 +242,8 @@ app.get('/api/isyeri', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/isyeri.php?tc=${tc}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Isyeri API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -253,7 +256,8 @@ app.get('/api/sulale', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/sulale.php?tc=${tc}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Sulale API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -266,7 +270,8 @@ app.get('/api/tcgsm', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/tcgsm.php?tc=${tc}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('TCGSM API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -279,7 +284,8 @@ app.get('/api/gsmtc', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/gsmtc.php?gsm=${gsm}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('GSMTC API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
@@ -298,7 +304,8 @@ app.get('/api/adsoyad', authenticateToken, trackQuery, async (req, res) => {
         const response = await axios.get(`https://arastir.sbs/api/adsoyad.php?${queryString}`);
         res.json(response.data);
     } catch (error) {
-        res.status(500).json({ error: 'API request failed' });
+        console.error('Adsoyad API Error:', error.message);
+        res.status(500).json({ error: 'API request failed', details: error.message });
     }
 });
 
