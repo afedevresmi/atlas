@@ -298,6 +298,7 @@ function animateNumbers() {
 async function makeApiRequest(endpoint, params = {}) {
     if (!authToken) {
         showToast('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.', 'error');
+        handleLogout();
         return null;
     }
     
@@ -305,56 +306,27 @@ async function makeApiRequest(endpoint, params = {}) {
     const url = `/api/${endpoint}?${queryString}`;
     
     try {
-        console.log(`Making API request to: ${url}`);
-        
         const response = await fetch(url, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
-        console.log(`API response status: ${response.status}`);
-        
-        // Don't logout on API errors, only on auth errors
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
             showToast('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.', 'error');
-            setTimeout(() => handleLogout(), 2000);
+            handleLogout();
             return null;
         }
         
         const data = await response.json();
-        console.log('API response data:', data);
         
         if (response.ok) {
             // Refresh stats after successful query
             setTimeout(loadStats, 500);
             return data;
         } else {
-            // Show error but don't logout
-            let errorMessage = data.error || 'API hatası';
-            
-            if (data.suggestion) {
-                errorMessage += ` - ${data.suggestion}`;
-            }
-            
-            if (response.status === 408) {
-                errorMessage = 'API zaman aşımı - Lütfen tekrar deneyin';
-            } else if (response.status === 503) {
-                errorMessage = 'Harici servis geçici olarak kullanılamıyor';
-            } else if (response.status >= 500) {
-                errorMessage = 'Sunucu hatası - Lütfen daha sonra tekrar deneyin';
-            }
-            
-            showToast(errorMessage, 'error');
-            return null;
+            throw new Error(data.error || 'API hatası');
         }
     } catch (error) {
-        console.error('API request failed:', error);
-        
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            showToast('Bağlantı hatası - İnternet bağlantınızı kontrol edin', 'error');
-        } else {
-            showToast(`Hata: ${error.message}`, 'error');
-        }
-        
+        showToast(`Hata: ${error.message}`, 'error');
         return null;
     }
 }
@@ -486,8 +458,8 @@ async function queryGsmTc() {
     }
 }
 
-// Enhanced IP Lookup Functions
-async function queryEnhancedIP() {
+// IP Lookup Functions
+async function queryIPLookup() {
     const ip = document.getElementById('ipInput').value.trim();
     
     if (!ip) {
@@ -495,593 +467,20 @@ async function queryEnhancedIP() {
         return;
     }
     
-    // Enhanced IP validation (IPv4 and IPv6)
-    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
-    
-    if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
-        showToast('Geçerli bir IP adresi girin! (IPv4 veya IPv6)', 'error');
+    // Validate IP format
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(ip)) {
+        showToast('Geçerli bir IP adresi girin! (örn: 192.168.1.1)', 'error');
         return;
     }
     
-    showEnhancedLoading('iplookupResults', 'IP Analizi');
+    showLoading('iplookupResults');
     
     const data = await makeApiRequest('iplookup', { ip });
     if (data) {
-        displayEnhancedIPResults('iplookupResults', data);
-        showToast('Gelişmiş IP analizi tamamlandı!', 'success');
+        displayIPResults('iplookupResults', data);
+        showToast('IP sorgusu tamamlandı!', 'success');
     }
-}
-
-async function queryEnhancedIBAN() {
-    const iban = document.getElementById('ibanInput').value.trim();
-    
-    if (!iban) {
-        showToast('IBAN numarası girin!', 'error');
-        return;
-    }
-    
-    // Clean IBAN (remove spaces)
-    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
-    
-    // Enhanced IBAN format validation
-    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
-        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
-        return;
-    }
-    
-    if (cleanIban.length < 15 || cleanIban.length > 34) {
-        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
-        return;
-    }
-    
-    showEnhancedLoading('ibanResults', 'IBAN Analizi');
-    
-    const data = await makeApiRequest('iban', { iban: cleanIban });
-    if (data) {
-        displayEnhancedIBANResults('ibanResults', data);
-        showToast('Gelişmiş IBAN analizi tamamlandı!', 'success');
-    }
-}
-
-function showEnhancedLoading(containerId, type) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = `
-        <div class="enhanced-loading">
-            <div class="loading-animation">
-                <div class="loading-circle"></div>
-                <div class="loading-circle"></div>
-                <div class="loading-circle"></div>
-            </div>
-            <div class="loading-text">
-                <h3>${type} Yapılıyor...</h3>
-                <p>15+ API'den veri toplanıyor ve analiz ediliyor</p>
-                <div class="loading-progress">
-                    <div class="progress-bar"></div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Animate progress bar
-    setTimeout(() => {
-        const progressBar = container.querySelector('.progress-bar');
-        if (progressBar) {
-            progressBar.style.width = '100%';
-        }
-    }, 100);
-}
-
-function displayEnhancedIPResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Gelişmiş IP Analizi Başarısız</h3>
-                <p>${data?.details || 'IP adresi analiz edilemedi veya geçersiz.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="enhanced-sources-info">
-            <h5><i class="fas fa-database"></i> Veri Kaynakları ve Güvenilirlik</h5>
-            <div class="sources-stats">
-                <span>Başarılı API: ${data.sources}/${data.totalSources}</span>
-                <div class="reliability-score reliability-${getReliabilityClass(data.reliability)}">
-                    <i class="fas fa-shield-alt"></i>
-                    Güvenilirlik: %${data.reliability}
-                </div>
-            </div>
-            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
-        </div>
-    `;
-    
-    // Enhanced Basic Information
-    if (data.data.basic) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-info-circle"></i> Temel Bilgiler</h4>
-                <div class="ip-result-grid">
-                    ${createEnhancedIPResultItem('IP Adresi', data.data.basic.ip)}
-                    ${createEnhancedIPResultItem('IP Versiyonu', data.data.basic.ipVersion)}
-                    ${createEnhancedIPResultItem('Hostname', data.data.basic.hostname)}
-                    ${createEnhancedIPResultItem('Reverse DNS', data.data.basic.reverseDns)}
-                    ${createEnhancedIPResultItem('Registrar', data.data.basic.registrar)}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Enhanced Location Information with accuracy
-    if (data.data.location) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-map-marker-alt"></i> Konum Bilgileri</h4>
-                <div class="ip-result-grid">
-                    ${createEnhancedIPResultItem('Kıta', data.data.location.continent)}
-                    ${createEnhancedIPResultItem('Ülke', `${data.data.location.country} (${data.data.location.countryCode})`)}
-                    ${createEnhancedIPResultItem('Bölge', data.data.location.region)}
-                    ${createEnhancedIPResultItem('Şehir', data.data.location.city)}
-                    ${createEnhancedIPResultItem('Posta Kodu', data.data.location.postalCode)}
-                    ${createEnhancedIPResultItem('Zaman Dilimi', data.data.location.timezone)}
-                </div>
-                ${data.data.location.coordinates ? `
-                    <div class="coordinates-section">
-                        <h5><i class="fas fa-crosshairs"></i> Koordinatlar</h5>
-                        <div class="coordinates-info">
-                            <span>Enlem: ${data.data.location.coordinates.latitude?.toFixed(6) || 'N/A'}</span>
-                            <span>Boylam: ${data.data.location.coordinates.longitude?.toFixed(6) || 'N/A'}</span>
-                            <div class="accuracy-indicator accuracy-${data.data.location.coordinates.accuracy}">
-                                <i class="fas fa-bullseye"></i>
-                                Doğruluk: ${data.data.location.coordinates.accuracy}
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Enhanced Network Information
-    if (data.data.network) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-network-wired"></i> Ağ Bilgileri</h4>
-                <div class="ip-result-grid">
-                    ${createEnhancedIPResultItem('İnternet Sağlayıcı', data.data.network.isp)}
-                    ${createEnhancedIPResultItem('Organizasyon', data.data.network.organization)}
-                    ${createEnhancedIPResultItem('Bağlantı Türü', data.data.network.connectionType)}
-                    ${createEnhancedIPResultItem('Kullanım Türü', data.data.network.usageType)}
-                </div>
-                ${data.data.network.asn ? `
-                    <div class="asn-section">
-                        <h5><i class="fas fa-sitemap"></i> ASN Bilgileri</h5>
-                        <div class="ip-result-grid">
-                            ${createEnhancedIPResultItem('ASN Numarası', data.data.network.asn.number)}
-                            ${createEnhancedIPResultItem('ASN Adı', data.data.network.asn.name)}
-                            ${createEnhancedIPResultItem('ASN Türü', data.data.network.asn.type)}
-                            ${createEnhancedIPResultItem('Route', data.data.network.asn.route)}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Enhanced Security Analysis
-    if (data.security) {
-        const riskClass = getRiskClass(data.security.riskScore);
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
-                <div class="security-overview">
-                    <div class="threat-level">
-                        <span>Tehdit Seviyesi: <strong class="security-${data.security.threatLevel}">${getThreatLevelText(data.security.threatLevel)}</strong></span>
-                        <div class="risk-meter">
-                            <div class="risk-fill risk-${riskClass}" style="width: ${data.security.riskScore}%"></div>
-                        </div>
-                        <span>Risk Skoru: ${data.security.riskScore}/100</span>
-                    </div>
-                </div>
-                <div class="security-analysis">
-                    ${createSecurityItem('Proxy', data.security.proxy)}
-                    ${createSecurityItem('VPN', data.security.vpn)}
-                    ${createSecurityItem('Tor', data.security.tor)}
-                    ${createSecurityItem('Hosting', data.security.hosting)}
-                    ${createSecurityItem('Mobil', data.security.mobile)}
-                </div>
-                ${data.security.blacklists && data.security.blacklists.length > 0 ? `
-                    <div class="blacklist-section">
-                        <h5><i class="fas fa-ban"></i> Kara Liste Kontrolü</h5>
-                        <div class="blacklist-results">
-                            ${data.security.blacklists.map(bl => `
-                                <div class="blacklist-item">
-                                    <span class="engine">${bl.engine}</span>
-                                    <span class="result security-danger">${bl.result}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Performance Analysis
-    if (data.performance) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-tachometer-alt"></i> Performans Analizi</h4>
-                <div class="performance-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Ortalama Yanıt Süresi</span>
-                        <span class="metric-value">${Math.round(data.performance.responseTime)}ms</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">API Erişilebilirliği</span>
-                        <span class="metric-value">${data.performance.availability}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Veri Kalitesi</span>
-                        <span class="metric-value">${data.performance.dataQuality}%</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Advanced Analysis
-    if (data.analysis) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-chart-line"></i> Gelişmiş Analiz</h4>
-                <div class="analysis-metrics">
-                    <div class="metric">
-                        <span class="metric-label">Veri Tutarlılığı</span>
-                        <span class="metric-value">${data.analysis.dataConsistency}%</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Konum Doğruluğu</span>
-                        <span class="metric-value">${data.analysis.geolocationAccuracy}</span>
-                    </div>
-                </div>
-                ${data.analysis.anomalies && data.analysis.anomalies.length > 0 ? `
-                    <div class="anomalies-section">
-                        <h5><i class="fas fa-exclamation-triangle"></i> Tespit Edilen Anomaliler</h5>
-                        ${data.analysis.anomalies.map(anomaly => `
-                            <div class="anomaly-item">
-                                <strong>${anomaly.type}:</strong> ${anomaly.description}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Recommendations
-    if (data.analysis && data.analysis.recommendations && data.analysis.recommendations.length > 0) {
-        html += `
-            <div class="recommendations-panel">
-                <h4><i class="fas fa-lightbulb"></i> Öneriler</h4>
-                ${data.analysis.recommendations.map(rec => `
-                    <div class="recommendation-item">
-                        <div class="recommendation-priority priority-${rec.priority}">${rec.priority}</div>
-                        <div class="recommendation-content">
-                            <strong>${rec.type}:</strong> ${rec.message}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    
-    // Add action buttons
-    addActionButtons(container, data, 'Enhanced IP Analysis');
-}
-
-function displayEnhancedIBANResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>Gelişmiş IBAN Analizi Başarısız</h3>
-                <p>${data?.details || 'IBAN numarası analiz edilemedi veya geçersiz.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="enhanced-sources-info">
-            <h5><i class="fas fa-university"></i> IBAN Doğrulama ve Analiz Sonucu</h5>
-            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
-        </div>
-    `;
-    
-    // Enhanced IBAN Validation Status
-    html += `
-        <div class="enhanced-result-section">
-            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
-            <div class="iban-validation">
-                <span class="validation-badge ${data.isValid ? 'validation-valid' : 'validation-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli IBAN' : 'Geçersiz IBAN'}
-                </span>
-                ${data.validation && data.validation.quality ? `
-                    <div class="quality-score">
-                        <span>Kalite Skoru:</span>
-                        <div class="quality-bar">
-                            <div class="quality-fill quality-${getQualityClass(data.validation.quality)}" style="width: ${data.validation.quality}%"></div>
-                        </div>
-                        <span>${data.validation.quality}/100</span>
-                    </div>
-                ` : ''}
-            </div>
-            <div class="iban-formatted">${data.formatted}</div>
-        </div>
-    `;
-    
-    // Enhanced IBAN Information
-    html += `
-        <div class="enhanced-result-section">
-            <h4><i class="fas fa-info-circle"></i> IBAN Yapısı</h4>
-            <div class="iban-result-grid">
-                ${createEnhancedIBANResultItem('IBAN Numarası', data.iban)}
-                ${createEnhancedIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
-                ${createEnhancedIBANResultItem('Kontrol Rakamları', data.checkDigits)}
-                ${createEnhancedIBANResultItem('Banka Kodu', data.bankCode)}
-                ${data.branchCode ? createEnhancedIBANResultItem('Şube Kodu', data.branchCode) : ''}
-                ${createEnhancedIBANResultItem('Hesap Numarası', data.accountNumber)}
-            </div>
-        </div>
-    `;
-    
-    // Country Information
-    if (data.countryInfo) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-globe"></i> Ülke Bilgileri</h4>
-                <div class="iban-result-grid">
-                    ${createEnhancedIBANResultItem('Bölge', data.countryInfo.region)}
-                    ${createEnhancedIBANResultItem('Para Birimi', data.countryInfo.currency)}
-                    ${createEnhancedIBANResultItem('SEPA Üyesi', data.countryInfo.sepa ? 'Evet' : 'Hayır')}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Enhanced Bank Information
-    if (data.bankInfo) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
-                <div class="bank-info-card">
-                    <h5><i class="fas fa-university"></i> ${data.bankInfo.bankName || 'Banka Bilgisi Bulunamadı'}</h5>
-                    <div class="iban-result-grid">
-                        ${createEnhancedIBANResultItem('Banka Türü', data.bankInfo.type || 'Bilinmiyor')}
-                        ${createEnhancedIBANResultItem('BIC/SWIFT Kodu', data.bankInfo.bic || 'Bilinmiyor')}
-                        ${createEnhancedIBANResultItem('Şehir', data.bankInfo.city || 'Bilinmiyor')}
-                        ${data.bankInfo.established ? createEnhancedIBANResultItem('Kuruluş Yılı', data.bankInfo.established) : ''}
-                        ${data.bankInfo.branches ? createEnhancedIBANResultItem('Şube Sayısı', data.bankInfo.branches) : ''}
-                        ${data.bankInfo.website ? createEnhancedIBANResultItem('Website', `<a href="https://${data.bankInfo.website}" target="_blank">${data.bankInfo.website}</a>`) : ''}
-                    </div>
-                    ${data.bankInfo.services && data.bankInfo.services.length > 0 ? `
-                        <div class="bank-services">
-                            <h6>Hizmetler:</h6>
-                            <div class="services-tags">
-                                ${data.bankInfo.services.map(service => `<span class="service-tag">${service}</span>`).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Security Analysis
-    if (data.security) {
-        const riskClass = getRiskClass(data.security.riskScore);
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
-                <div class="security-overview">
-                    <div class="threat-level">
-                        <span>Risk Seviyesi: <strong class="security-${data.security.riskLevel}">${getRiskLevelText(data.security.riskLevel)}</strong></span>
-                        <div class="risk-meter">
-                            <div class="risk-fill risk-${riskClass}" style="width: ${data.security.riskScore}%"></div>
-                        </div>
-                        <span>Risk Skoru: ${data.security.riskScore}/100</span>
-                    </div>
-                </div>
-                ${data.security.flags && data.security.flags.length > 0 ? `
-                    <div class="security-flags">
-                        <h5><i class="fas fa-flag"></i> Güvenlik Uyarıları</h5>
-                        ${data.security.flags.map(flag => `
-                            <div class="security-flag flag-${flag.severity}">
-                                <strong>${flag.type}:</strong> ${flag.description}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-            </div>
-        `;
-    }
-    
-    // Analytics
-    if (data.analytics) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-chart-pie"></i> Analitik Bilgiler</h4>
-                <div class="analytics-grid">
-                    <div class="analytics-section">
-                        <h5>Yapısal Bilgiler</h5>
-                        <div class="iban-result-grid">
-                            ${createEnhancedIBANResultItem('IBAN Uzunluğu', data.analytics.structure.length)}
-                            ${createEnhancedIBANResultItem('Banka Kodu Uzunluğu', data.analytics.structure.bankCodeLength)}
-                            ${createEnhancedIBANResultItem('Hesap No Uzunluğu', data.analytics.structure.accountNumberLength)}
-                        </div>
-                    </div>
-                    <div class="analytics-section">
-                        <h5>Coğrafi Bilgiler</h5>
-                        <div class="iban-result-grid">
-                            ${createEnhancedIBANResultItem('Bölge', data.analytics.geography.region)}
-                            ${createEnhancedIBANResultItem('Para Birimi', data.analytics.geography.currency)}
-                            ${createEnhancedIBANResultItem('SEPA Uygunluğu', data.analytics.geography.sepaEligible ? 'Evet' : 'Hayır')}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Compliance Information
-    if (data.compliance) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-gavel"></i> Uyumluluk Bilgileri</h4>
-                <div class="compliance-grid">
-                    ${createComplianceItem('ISO 13616', data.compliance.iso13616)}
-                    ${createComplianceItem('SEPA', data.compliance.sepa)}
-                    ${createComplianceItem('SWIFT', data.compliance.swift)}
-                    ${createComplianceItem('AML', data.compliance.aml)}
-                    ${createComplianceItem('GDPR', data.compliance.gdpr)}
-                    ${createComplianceItem('PSD2', data.compliance.psd2)}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Recommendations
-    if (data.recommendations && data.recommendations.length > 0) {
-        html += `
-            <div class="recommendations-panel">
-                <h4><i class="fas fa-lightbulb"></i> Öneriler</h4>
-                ${data.recommendations.map(rec => `
-                    <div class="recommendation-item">
-                        <div class="recommendation-priority priority-${rec.priority}">${rec.priority}</div>
-                        <div class="recommendation-content">
-                            <strong>${rec.type}:</strong> ${rec.message}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    
-    // Add action buttons
-    addActionButtons(container, data, 'Enhanced IBAN Analysis');
-}
-
-// Helper functions for enhanced display
-function createEnhancedIPResultItem(label, value, isWarning = false) {
-    if (!value || value === 'null' || value === 'undefined') {
-        return '';
-    }
-    
-    const warningClass = isWarning ? 'style="color: #ffc107;"' : '';
-    
-    return `
-        <div class="ip-result-item">
-            <span class="ip-result-label">${label}:</span>
-            <span class="ip-result-value" ${warningClass}>${value}</span>
-        </div>
-    `;
-}
-
-function createEnhancedIBANResultItem(label, value) {
-    if (!value || value === 'null' || value === 'undefined') {
-        return '';
-    }
-    
-    return `
-        <div class="iban-result-item">
-            <span class="iban-result-label">${label}:</span>
-            <span class="iban-result-value">${value}</span>
-        </div>
-    `;
-}
-
-function createSecurityItem(label, securityData) {
-    if (!securityData) return '';
-    
-    const detected = securityData.detected;
-    const confidence = securityData.confidence || 0;
-    const statusClass = detected ? 'security-danger' : 'security-clean';
-    const statusText = detected ? 'Tespit Edildi' : 'Temiz';
-    
-    return `
-        <div class="security-item">
-            <span class="security-label">${label}</span>
-            <div class="security-status ${statusClass}">
-                <i class="fas fa-${detected ? 'exclamation-triangle' : 'check'}"></i>
-                ${statusText} (${confidence}%)
-            </div>
-        </div>
-    `;
-}
-
-function createComplianceItem(label, isCompliant) {
-    const statusClass = isCompliant ? 'security-clean' : 'security-warning';
-    const statusText = isCompliant ? 'Uyumlu' : 'Uyumlu Değil';
-    
-    return `
-        <div class="compliance-item">
-            <span class="compliance-label">${label}</span>
-            <div class="compliance-status ${statusClass}">
-                <i class="fas fa-${isCompliant ? 'check' : 'times'}"></i>
-                ${statusText}
-            </div>
-        </div>
-    `;
-}
-
-function getReliabilityClass(score) {
-    if (score >= 80) return 'high';
-    if (score >= 60) return 'medium';
-    return 'low';
-}
-
-function getRiskClass(score) {
-    if (score >= 70) return 'high';
-    if (score >= 40) return 'medium';
-    return 'low';
-}
-
-function getQualityClass(score) {
-    if (score >= 90) return 'excellent';
-    if (score >= 70) return 'good';
-    if (score >= 50) return 'fair';
-    return 'poor';
-}
-
-function getThreatLevelText(level) {
-    const levels = {
-        'clean': 'Temiz',
-        'low': 'Düşük',
-        'medium': 'Orta',
-        'high': 'Yüksek'
-    };
-    return levels[level] || level;
-}
-
-function getRiskLevelText(level) {
-    const levels = {
-        'low': 'Düşük',
-        'medium': 'Orta',
-        'high': 'Yüksek'
-    };
-    return levels[level] || level;
 }
 
 function setExampleIP(ip) {
@@ -1243,19 +642,9 @@ function showLoading(containerId) {
 function displayResults(containerId, data, queryType) {
     const container = document.getElementById(containerId);
     
-    // Handle different response formats
-    let processedData = data;
+    console.log('Display Results - Raw Data:', data);
     
-    // Check if it's an ad soyad response with nested data structure
-    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
-        processedData = data.data;
-    }
-    // Check if it's a single object response that should be converted to array
-    else if (data && typeof data === 'object' && !Array.isArray(data) && data.success !== 'true') {
-        processedData = [data];
-    }
-    
-    if (!processedData || (Array.isArray(processedData) && processedData.length === 0)) {
+    if (!data) {
         container.innerHTML = `
             <div style="text-align: center; padding: 60px; color: #888;">
                 <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-search" style="opacity: 0.3;"></i></div>
@@ -1266,373 +655,159 @@ function displayResults(containerId, data, queryType) {
         return;
     }
     
-    // Display results with count information if available
-    let headerInfo = '';
-    if (data && data.success && data.count) {
-        headerInfo = `
-            <div class="results-header">
-                <h4><i class="fas fa-list"></i> Sorgu Sonuçları</h4>
-                <div class="results-count">
-                    <span class="count-badge">
-                        <i class="fas fa-users"></i>
-                        ${data.count} kayıt bulundu
-                    </span>
-                </div>
+    // API yanıtı { success: true, count: 4, data: [...] } formatındaysa
+    let tableData = data;
+    
+    if (data.data && Array.isArray(data.data)) {
+        // data.data dizisini kullan
+        tableData = data.data;
+    } else if (data.success && data.data) {
+        // success varsa ve data varsa
+        tableData = Array.isArray(data.data) ? data.data : [data.data];
+    } else if (Array.isArray(data)) {
+        // Zaten dizi ise
+        tableData = data;
+    } else if (typeof data === 'object') {
+        // Tek obje ise diziye çevir
+        tableData = [data];
+    }
+    
+    console.log('Display Results - Table Data:', tableData);
+    
+    if (!Array.isArray(tableData) || tableData.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px; color: #888;">
+                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-search" style="opacity: 0.3;"></i></div>
+                <h3>Sonuç Bulunamadı</h3>
+                <p>Arama kriterlerinize uygun sonuç bulunamadı.</p>
             </div>
         `;
+        return;
     }
     
-    // Always display as table for consistency
-    if (Array.isArray(processedData) && processedData.length > 0) {
-        displayEnhancedTable(container, processedData, queryType, headerInfo);
-    } else if (typeof processedData === 'object') {
-        // Convert single object to array for table display
-        displayEnhancedTable(container, [processedData], queryType, headerInfo);
-    }
+    // Tablo olarak göster
+    displayTable(container, tableData, queryType);
     
     // Add action buttons
-    addActionButtons(container, processedData, queryType);
+    addActionButtons(container, tableData, queryType);
 }
 
-function displayEnhancedTable(container, data, queryType, headerInfo = '') {
+function displayTable(container, data, queryType) {
     if (!data.length) return;
     
-    const keys = Object.keys(data[0]);
+    // Tüm objeleri düzleştir (flatten) - iç içe objeleri ayrı sütunlara çıkar
+    const flattenedData = data.map(item => flattenObject(item));
     
-    // Create Turkish column headers for better readability
-    const columnHeaders = {
-        'TC': 'TC Kimlik No',
-        'ADI': 'Adı',
-        'SOYADI': 'Soyadı',
-        'DOGUMTARIHI': 'Doğum Tarihi',
-        'NUFUSIL': 'Nüfus İli',
-        'NUFUSILCE': 'Nüfus İlçesi',
-        'ANNEADI': 'Anne Adı',
-        'ANNETC': 'Anne TC',
-        'BABAADI': 'Baba Adı',
-        'BABATC': 'Baba TC',
-        'UYRUK': 'Uyruk',
-        'ADRES': 'Adres',
-        'MAHALLE': 'Mahalle',
-        'SOKAK': 'Sokak',
-        'BINA': 'Bina No',
-        'DAIRE': 'Daire No',
-        'POSTA': 'Posta Kodu',
-        'GSM': 'GSM Numarası',
-        'TELEFON': 'Telefon',
-        'EMAIL': 'E-posta'
-    };
+    // Tüm anahtarları topla
+    const allKeys = new Set();
+    flattenedData.forEach(item => {
+        Object.keys(item).forEach(key => allKeys.add(key));
+    });
     
-    let html = headerInfo + `
-        <div class="enhanced-table-container">
-            <div class="table-wrapper">
-                <table class="enhanced-results-table">
-                    <thead>
-                        <tr>
-                            ${keys.map(key => `
-                                <th>
-                                    <div class="header-content">
-                                        <span>${columnHeaders[key] || key}</span>
-                                        <i class="fas fa-sort"></i>
-                                    </div>
-                                </th>
-                            `).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
+    const keys = Array.from(allKeys);
+    
+    let html = `
+        <div style="overflow-x: auto;">
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        ${keys.map(key => `<th>${formatColumnName(key)}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
     `;
     
-    data.forEach((item, index) => {
-        html += `<tr class="table-row" style="animation: slideInUp 0.4s ease-out ${index * 0.1}s both;">`;
+    flattenedData.forEach((item, index) => {
+        html += `<tr style="animation: fadeInUp 0.4s ease-out ${index * 0.1}s both;">`;
         keys.forEach(key => {
-            let value = item[key] || '-';
-            let cellClass = '';
+            const value = item[key];
+            let displayValue = '-';
             
-            // Add special formatting for specific fields
-            if (key === 'TC' || key === 'ANNETC' || key === 'BABATC') {
-                cellClass = 'tc-cell';
-                if (value !== '-') {
-                    value = `<span class="tc-number">${value}</span>`;
-                }
-            } else if (key === 'DOGUMTARIHI') {
-                cellClass = 'date-cell';
-                if (value !== '-') {
-                    value = `<span class="date-value">${value}</span>`;
-                }
-            } else if (key === 'ADI' || key === 'SOYADI' || key === 'ANNEADI' || key === 'BABAADI') {
-                cellClass = 'name-cell';
-                if (value !== '-') {
-                    value = `<span class="name-value">${value}</span>`;
-                }
-            } else if (key === 'NUFUSIL' || key === 'NUFUSILCE') {
-                cellClass = 'location-cell';
-                if (value !== '-') {
-                    value = `<span class="location-value"><i class="fas fa-map-marker-alt"></i> ${value}</span>`;
-                }
-            } else if (key === 'GSM' || key === 'TELEFON') {
-                cellClass = 'phone-cell';
-                if (value !== '-') {
-                    value = `<span class="phone-value"><i class="fas fa-phone"></i> ${value}</span>`;
-                }
-            } else if (key === 'EMAIL') {
-                cellClass = 'email-cell';
-                if (value !== '-') {
-                    value = `<span class="email-value"><i class="fas fa-envelope"></i> ${value}</span>`;
-                }
+            if (value !== null && value !== undefined && value !== '') {
+                displayValue = String(value);
             }
             
-            html += `<td class="${cellClass}">${value}</td>`;
+            html += `<td>${displayValue}</td>`;
         });
         html += '</tr>';
     });
     
     html += `
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
     `;
     
     container.innerHTML = html;
-    
-    // Add table search functionality
-    addTableSearch(container);
 }
 
-function addTableSearch(container) {
-    const tableWrapper = container.querySelector('.table-wrapper');
-    if (!tableWrapper) return;
+// Objeyi düzleştir (nested objeleri tek seviyeye çıkar)
+function flattenObject(obj, prefix = '') {
+    const flattened = {};
     
-    // Add search input
-    const searchDiv = document.createElement('div');
-    searchDiv.className = 'table-search';
-    searchDiv.innerHTML = `
-        <div class="search-input-group">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Tabloda ara..." class="table-search-input">
-            <button class="clear-search-btn" title="Temizle">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    `;
-    
-    tableWrapper.insertBefore(searchDiv, tableWrapper.firstChild);
-    
-    const searchInput = searchDiv.querySelector('.table-search-input');
-    const clearBtn = searchDiv.querySelector('.clear-search-btn');
-    const table = container.querySelector('.enhanced-results-table');
-    const rows = table.querySelectorAll('tbody tr');
-    
-    // Search functionality
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase().trim();
-        let visibleCount = 0;
-        
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            if (text.includes(searchTerm)) {
-                row.style.display = '';
-                visibleCount++;
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const value = obj[key];
+            const newKey = prefix ? `${prefix}_${key}` : key;
+            
+            if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                // İç içe obje varsa, onu da düzleştir
+                Object.assign(flattened, flattenObject(value, newKey));
+            } else if (Array.isArray(value)) {
+                // Dizi ise virgülle ayır
+                flattened[newKey] = value.join(', ');
             } else {
-                row.style.display = 'none';
+                flattened[newKey] = value;
             }
-        });
-        
-        // Update results count
-        updateResultsCount(container, visibleCount, rows.length);
-        
-        // Show/hide clear button
-        clearBtn.style.display = searchTerm ? 'block' : 'none';
-    });
-    
-    // Clear search
-    clearBtn.addEventListener('click', function() {
-        searchInput.value = '';
-        rows.forEach(row => row.style.display = '');
-        updateResultsCount(container, rows.length, rows.length);
-        this.style.display = 'none';
-        searchInput.focus();
-    });
-}
-
-function updateResultsCount(container, visible, total) {
-    const countBadge = container.querySelector('.count-badge');
-    if (countBadge) {
-        if (visible === total) {
-            countBadge.innerHTML = `<i class="fas fa-users"></i> ${total} kayıt bulundu`;
-        } else {
-            countBadge.innerHTML = `<i class="fas fa-users"></i> ${visible}/${total} kayıt gösteriliyor`;
         }
     }
+    
+    return flattened;
+}
+
+// Sütun adlarını düzenle (alt çizgileri boşluğa çevir, büyük harf yap)
+function formatColumnName(name) {
+    return name
+        .replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 }
 
 function addActionButtons(container, data, queryType) {
     const actionsDiv = document.createElement('div');
     actionsDiv.className = 'action-buttons';
     
-    // Only show Super Search button for meaningful data
-    if (shouldShowSuperSearchButton(data, queryType)) {
-        const superSearchBtn = document.createElement('button');
-        superSearchBtn.innerHTML = '<i class="fas fa-search-plus"></i> Bu Kişi Super Search';
-        superSearchBtn.className = 'action-btn super-search-btn';
-        superSearchBtn.addEventListener('click', () => performSuperSearchFromResult(data, queryType));
-        actionsDiv.appendChild(superSearchBtn);
-    }
-    
     // Clear Results Button
     const clearBtn = document.createElement('button');
-    clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sonuçları Temizle';
+    clearBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Sorgu Temizle';
     clearBtn.className = 'action-btn clear-btn';
-    clearBtn.addEventListener('click', () => clearResults(container.id));
+    clearBtn.onclick = () => clearResults(container.id);
     
-    // Export to Excel Button - only for table data
-    if (Array.isArray(data) && data.length > 0) {
-        const exportBtn = document.createElement('button');
-        exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Excel\'e Aktar';
-        exportBtn.className = 'action-btn export-btn';
-        exportBtn.addEventListener('click', () => exportToExcel(data, queryType));
-        actionsDiv.appendChild(exportBtn);
-    }
+    // Export to Excel Button
+    const exportBtn = document.createElement('button');
+    exportBtn.innerHTML = '<i class="fas fa-file-excel"></i> Excel\'e Aktar';
+    exportBtn.className = 'action-btn export-btn';
+    exportBtn.onclick = () => exportToExcel(data, queryType);
     
-    // Copy Table Button - only for table data
-    if (Array.isArray(data) && data.length > 0) {
-        const copyTableBtn = document.createElement('button');
-        copyTableBtn.innerHTML = '<i class="fas fa-table"></i> Tablo Kopyala';
-        copyTableBtn.className = 'action-btn copy-table-btn';
-        copyTableBtn.addEventListener('click', () => {
-            copyTableBtn.classList.add('loading');
-            setTimeout(() => {
-                copyTableToClipboard(container, data);
-                copyTableBtn.classList.remove('loading');
-                copyTableBtn.classList.add('copy-success');
-                setTimeout(() => copyTableBtn.classList.remove('copy-success'), 600);
-            }, 100);
-        });
-        actionsDiv.appendChild(copyTableBtn);
-    }
+    // Copy JSON Button
+    const copyBtn = document.createElement('button');
+    copyBtn.innerHTML = '<i class="fas fa-copy"></i> JSON Kopyala';
+    copyBtn.className = 'action-btn copy-btn';
+    copyBtn.onclick = () => copyToClipboard(JSON.stringify(data, null, 2));
+    
+    // Export to TXT Button
+    const txtBtn = document.createElement('button');
+    txtBtn.innerHTML = '<i class="fas fa-file-alt"></i> TXT İndir';
+    txtBtn.className = 'action-btn export-btn';
+    txtBtn.onclick = () => downloadAsText(data, queryType);
     
     actionsDiv.appendChild(clearBtn);
+    actionsDiv.appendChild(exportBtn);
+    actionsDiv.appendChild(copyBtn);
+    actionsDiv.appendChild(txtBtn);
+    
     container.appendChild(actionsDiv);
-}
-
-// Check if Super Search button should be shown
-function shouldShowSuperSearchButton(data, queryType) {
-    // Don't show for IP or IBAN queries
-    if (queryType.includes('IP') || queryType.includes('IBAN')) {
-        return false;
-    }
-    
-    // Don't show for Super Search results
-    if (queryType.includes('Super Search')) {
-        return false;
-    }
-    
-    // Check if data contains searchable information
-    if (Array.isArray(data)) {
-        return data.some(item => item.TC || item.GSM || (item.ADI && item.SOYADI));
-    } else if (data && typeof data === 'object') {
-        return data.TC || data.GSM || (data.ADI && data.SOYADI);
-    }
-    
-    return false;
-}
-
-// New function to copy table data in a readable format
-function copyTableToClipboard(container, data) {
-    try {
-        // Process data to handle nested structure
-        let processedData = data;
-        if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
-            processedData = data.data;
-        } else if (!Array.isArray(data)) {
-            processedData = [data];
-        }
-        
-        if (!processedData || processedData.length === 0) {
-            showToast('Kopyalanacak veri bulunamadı!', 'error');
-            return;
-        }
-        
-        // Create formatted table text
-        const keys = Object.keys(processedData[0]);
-        
-        // Column headers with Turkish translations
-        const columnHeaders = {
-            'TC': 'TC Kimlik No',
-            'ADI': 'Adı',
-            'SOYADI': 'Soyadı',
-            'DOGUMTARIHI': 'Doğum Tarihi',
-            'NUFUSIL': 'Nüfus İli',
-            'NUFUSILCE': 'Nüfus İlçesi',
-            'ANNEADI': 'Anne Adı',
-            'ANNETC': 'Anne TC',
-            'BABAADI': 'Baba Adı',
-            'BABATC': 'Baba TC',
-            'UYRUK': 'Uyruk',
-            'ADRES': 'Adres',
-            'MAHALLE': 'Mahalle',
-            'SOKAK': 'Sokak',
-            'BINA': 'Bina No',
-            'DAIRE': 'Daire No',
-            'POSTA': 'Posta Kodu',
-            'GSM': 'GSM Numarası',
-            'TELEFON': 'Telefon',
-            'EMAIL': 'E-posta'
-        };
-        
-        // Calculate column widths for better formatting
-        const columnWidths = {};
-        keys.forEach(key => {
-            const headerLength = (columnHeaders[key] || key).length;
-            const maxDataLength = Math.max(...processedData.map(item => 
-                String(item[key] || '-').length
-            ));
-            columnWidths[key] = Math.max(headerLength, maxDataLength, 10);
-        });
-        
-        // Create header row
-        let tableText = '';
-        tableText += keys.map(key => 
-            (columnHeaders[key] || key).padEnd(columnWidths[key])
-        ).join(' | ') + '\n';
-        
-        // Create separator row
-        tableText += keys.map(key => 
-            '-'.repeat(columnWidths[key])
-        ).join('-|-') + '\n';
-        
-        // Create data rows
-        processedData.forEach(item => {
-            tableText += keys.map(key => {
-                const value = item[key] || '-';
-                return String(value).padEnd(columnWidths[key]);
-            }).join(' | ') + '\n';
-        });
-        
-        // Add summary information
-        tableText += '\n';
-        tableText += `Toplam Kayıt: ${processedData.length}\n`;
-        tableText += `Sorgu Zamanı: ${new Date().toLocaleString('tr-TR')}\n`;
-        tableText += `Kaynak: Atlas Panel - https://atlaspanel.onrender.com\n`;
-        
-        // Copy to clipboard
-        navigator.clipboard.writeText(tableText).then(() => {
-            showToast(`${processedData.length} kayıt tablo formatında kopyalandı!`, 'success');
-        }).catch(() => {
-            // Fallback for older browsers
-            const textArea = document.createElement('textarea');
-            textArea.value = tableText;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            showToast(`${processedData.length} kayıt tablo formatında kopyalandı!`, 'success');
-        });
-        
-    } catch (error) {
-        console.error('Copy error:', error);
-        showToast('Kopyalama başarısız!', 'error');
-    }
 }
 
 // Utility Functions
@@ -1657,69 +832,8 @@ function copyToClipboard(text) {
 }
 
 function downloadAsText(data, queryType) {
-    // Process data to handle nested structure
-    let processedData = data;
-    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
-        processedData = data.data;
-    } else if (!Array.isArray(data)) {
-        processedData = [data];
-    }
-    
-    if (!processedData || processedData.length === 0) {
-        showToast('İndirilecek veri bulunamadı!', 'error');
-        return;
-    }
-    
-    // Create formatted text content
-    const keys = Object.keys(processedData[0]);
-    
-    // Column headers with Turkish translations
-    const columnHeaders = {
-        'TC': 'TC Kimlik No',
-        'ADI': 'Adı',
-        'SOYADI': 'Soyadı',
-        'DOGUMTARIHI': 'Doğum Tarihi',
-        'NUFUSIL': 'Nüfus İli',
-        'NUFUSILCE': 'Nüfus İlçesi',
-        'ANNEADI': 'Anne Adı',
-        'ANNETC': 'Anne TC',
-        'BABAADI': 'Baba Adı',
-        'BABATC': 'Baba TC',
-        'UYRUK': 'Uyruk',
-        'ADRES': 'Adres',
-        'MAHALLE': 'Mahalle',
-        'SOKAK': 'Sokak',
-        'BINA': 'Bina No',
-        'DAIRE': 'Daire No',
-        'POSTA': 'Posta Kodu',
-        'GSM': 'GSM Numarası',
-        'TELEFON': 'Telefon',
-        'EMAIL': 'E-posta'
-    };
-    
-    let textContent = `ATLAS PANEL - ${queryType.toUpperCase()} SORGU SONUÇLARI\n`;
-    textContent += `Sorgu Zamanı: ${new Date().toLocaleString('tr-TR')}\n`;
-    textContent += `Toplam Kayıt: ${processedData.length}\n`;
-    textContent += `${'='.repeat(80)}\n\n`;
-    
-    processedData.forEach((item, index) => {
-        textContent += `KAYIT ${index + 1}:\n`;
-        textContent += `${'-'.repeat(40)}\n`;
-        
-        keys.forEach(key => {
-            const label = columnHeaders[key] || key;
-            const value = item[key] || '-';
-            textContent += `${label}: ${value}\n`;
-        });
-        
-        textContent += '\n';
-    });
-    
-    textContent += `${'='.repeat(80)}\n`;
-    textContent += `Toplam ${processedData.length} kayıt listelendi.\n`;
-    textContent += `Atlas Panel - https://atlaspanel.onrender.com\n`;
-    
-    const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+    const text = JSON.stringify(data, null, 2);
+    const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     
     const a = document.createElement('a');
@@ -1730,65 +844,27 @@ function downloadAsText(data, queryType) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast(`TXT dosyası indirildi! (${processedData.length} kayıt)`, 'success');
+    showToast('TXT dosyası indirildi!', 'success');
 }
 
 function exportToExcel(data, queryType) {
-    // Process data to handle nested structure
-    let processedData = data;
-    if (data && typeof data === 'object' && data.success && data.data && Array.isArray(data.data)) {
-        processedData = data.data;
-    } else if (!Array.isArray(data)) {
-        processedData = [data];
-    }
-    
-    if (!processedData || processedData.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
         showToast('Dışa aktarılacak veri bulunamadı!', 'error');
         return;
     }
     
-    // Create CSV content with Turkish headers
-    const keys = Object.keys(processedData[0]);
+    // Create CSV content
+    const keys = Object.keys(data[0]);
+    let csvContent = keys.join(',') + '\n';
     
-    // Column headers with Turkish translations
-    const columnHeaders = {
-        'TC': 'TC Kimlik No',
-        'ADI': 'Adı',
-        'SOYADI': 'Soyadı',
-        'DOGUMTARIHI': 'Doğum Tarihi',
-        'NUFUSIL': 'Nüfus İli',
-        'NUFUSILCE': 'Nüfus İlçesi',
-        'ANNEADI': 'Anne Adı',
-        'ANNETC': 'Anne TC',
-        'BABAADI': 'Baba Adı',
-        'BABATC': 'Baba TC',
-        'UYRUK': 'Uyruk',
-        'ADRES': 'Adres',
-        'MAHALLE': 'Mahalle',
-        'SOKAK': 'Sokak',
-        'BINA': 'Bina No',
-        'DAIRE': 'Daire No',
-        'POSTA': 'Posta Kodu',
-        'GSM': 'GSM Numarası',
-        'TELEFON': 'Telefon',
-        'EMAIL': 'E-posta'
-    };
-    
-    // Create header row with Turkish column names
-    let csvContent = keys.map(key => `"${columnHeaders[key] || key}"`).join(',') + '\n';
-    
-    processedData.forEach(item => {
+    data.forEach(item => {
         const row = keys.map(key => {
             const value = item[key] || '';
-            // Escape commas and quotes, handle null values
-            return `"${String(value === null ? '' : value).replace(/"/g, '""')}"`;
+            // Escape commas and quotes
+            return `"${String(value).replace(/"/g, '""')}"`;
         });
         csvContent += row.join(',') + '\n';
     });
-    
-    // Add BOM for proper Turkish character display in Excel
-    const BOM = '\uFEFF';
-    csvContent = BOM + csvContent;
     
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1802,7 +878,7 @@ function exportToExcel(data, queryType) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    showToast(`Excel dosyası indirildi! (${processedData.length} kayıt)`, 'success');
+    showToast('Excel dosyası indirildi!', 'success');
 }
 
 // Admin Functions
@@ -1947,1248 +1023,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// IBAN Lookup Functions
-async function queryIBAN() {
-    const iban = document.getElementById('ibanInput').value.trim();
-    
-    if (!iban) {
-        showToast('IBAN numarası girin!', 'error');
-        return;
-    }
-    
-    // Clean IBAN (remove spaces)
-    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
-    
-    // Basic IBAN format validation
-    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
-        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
-        return;
-    }
-    
-    if (cleanIban.length < 15 || cleanIban.length > 34) {
-        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
-        return;
-    }
-    
-    showLoading('ibanResults');
-    
-    const data = await makeApiRequest('iban', { iban: cleanIban });
-    if (data) {
-        displayIBANResults('ibanResults', data);
-        showToast('IBAN sorgusu tamamlandı!', 'success');
-    }
-}
-
-function setExampleIBAN(iban) {
-    document.getElementById('ibanInput').value = iban;
-}
-
-function displayIBANResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>IBAN Sorgusu Başarısız</h3>
-                <p>${data?.details || 'IBAN numarası doğrulanamadı veya geçersiz.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="iban-sources-info">
-            <h5><i class="fas fa-university"></i> IBAN Doğrulama Sonucu</h5>
-            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
-        </div>
-    `;
-    
-    // IBAN Validation Status
-    html += `
-        <div class="iban-result-section">
-            <h4><i class="fas fa-check-circle"></i> Doğrulama Durumu</h4>
-            <div class="iban-validation">
-                <span class="validation-badge ${data.isValid ? 'validation-valid' : 'validation-invalid'}">
-                    <i class="fas fa-${data.isValid ? 'check' : 'times'}"></i>
-                    ${data.isValid ? 'Geçerli IBAN' : 'Geçersiz IBAN'}
-                </span>
-            </div>
-            <div class="iban-formatted">${data.formatted}</div>
-        </div>
-    `;
-    
-    // Basic IBAN Information
-    html += `
-        <div class="iban-result-section">
-            <h4><i class="fas fa-info-circle"></i> IBAN Bilgileri</h4>
-            <div class="iban-result-grid">
-                ${createIBANResultItem('IBAN Numarası', data.iban)}
-                ${createIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
-                ${createIBANResultItem('Kontrol Rakamları', data.checkDigits)}
-                ${createIBANResultItem('Banka Kodu', data.bankCode)}
-                ${createIBANResultItem('Hesap Numarası', data.accountNumber)}
-            </div>
-        </div>
-    `;
-    
-    // Bank Information
-    if (data.bankInfo && (data.bankInfo.bankName || data.bankInfo.bic)) {
-        html += `
-            <div class="iban-result-section">
-                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
-                <div class="bank-info-card">
-                    <h5><i class="fas fa-university"></i> Banka Detayları</h5>
-                    <div class="iban-result-grid">
-                        ${createIBANResultItem('Banka Adı', data.bankInfo.bankName || 'Bilinmiyor')}
-                        ${createIBANResultItem('BIC/SWIFT Kodu', data.bankInfo.bic || 'Bilinmiyor')}
-                        ${createIBANResultItem('Şehir', data.bankInfo.city || 'Bilinmiyor')}
-                        ${createIBANResultItem('Ülke', data.bankInfo.country)}
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        html += `
-            <div class="iban-result-section">
-                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
-                <div class="bank-info-card">
-                    <p style="color: #888; text-align: center; padding: 20px;">
-                        <i class="fas fa-info-circle"></i>
-                        Bu IBAN için detaylı banka bilgisi bulunamadı.
-                    </p>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Validation Details
-    if (data.validation) {
-        html += `
-            <div class="iban-result-section">
-                <h4><i class="fas fa-cogs"></i> Teknik Detaylar</h4>
-                <div class="iban-result-grid">
-                    ${createIBANResultItem('Doğrulama Durumu', data.validation.isValid ? 'Başarılı' : 'Başarısız')}
-                    ${data.validation.error ? createIBANResultItem('Hata Detayı', data.validation.error) : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    
-    // Add action buttons
-    addActionButtons(container, data, 'IBAN Lookup');
-}
-
-function createIBANResultItem(label, value) {
-    if (!value || value === 'null' || value === 'undefined' || value === 'Bilinmiyor') {
-        if (value === 'Bilinmiyor') {
-            return `
-                <div class="iban-result-item">
-                    <span class="iban-result-label">${label}:</span>
-                    <span class="iban-result-value" style="color: #888; font-style: italic;">${value}</span>
-                </div>
-            `;
-        }
-        return '';
-    }
-    
-    return `
-        <div class="iban-result-item">
-            <span class="iban-result-label">${label}:</span>
-            <span class="iban-result-value">${value}</span>
-        </div>
-    `;
-}
-
-// Format IBAN input as user types
-document.addEventListener('DOMContentLoaded', function() {
-    const ibanInput = document.getElementById('ibanInput');
-    if (ibanInput) {
-        ibanInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '').toUpperCase();
-            let formatted = value.replace(/(.{4})/g, '$1 ').trim();
-            if (formatted.length <= 34 + 8) { // 34 chars + 8 spaces max
-                e.target.value = formatted;
-            }
-        });
-        
-        ibanInput.addEventListener('paste', function(e) {
-            setTimeout(() => {
-                let value = e.target.value.replace(/\s/g, '').toUpperCase();
-                let formatted = value.replace(/(.{4})/g, '$1 ').trim();
-                e.target.value = formatted;
-            }, 10);
-        });
-    }
-
-    // Super Search input setup
-    const superSearchInput = document.getElementById('superSearchInput');
-    if (superSearchInput) {
-        superSearchInput.addEventListener('input', handleSuperSearchInput);
-        superSearchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                performSuperSearch();
-            }
-        });
-    }
 });
-
-// Super Search Functions
-function handleSuperSearchInput() {
-    const input = document.getElementById('superSearchInput');
-    const value = input.value.trim();
-    const detectedTypesContainer = document.getElementById('detectedTypes');
-    const suggestionsContainer = document.getElementById('searchSuggestions');
-    
-    if (!value) {
-        detectedTypesContainer.innerHTML = '';
-        suggestionsContainer.style.display = 'none';
-        return;
-    }
-    
-    const detectedTypes = detectInputType(value);
-    displayDetectedTypes(detectedTypes);
-    showSearchSuggestions(value, detectedTypes);
-}
-
-function detectInputType(input) {
-    const types = [];
-    const cleanInput = input.replace(/\s/g, '');
-    
-    // TC Kimlik No detection
-    if (/^[0-9]{11}$/.test(cleanInput)) {
-        types.push({ type: 'tc', label: 'TC Kimlik', confidence: 95 });
-    }
-    
-    // GSM detection
-    if (/^[0-9]{10}$/.test(cleanInput) || /^(\+90|0)?5[0-9]{9}$/.test(cleanInput)) {
-        types.push({ type: 'gsm', label: 'GSM Numarası', confidence: 90 });
-    }
-    
-    // IBAN detection
-    if (/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanInput.toUpperCase()) && cleanInput.length >= 15 && cleanInput.length <= 34) {
-        types.push({ type: 'iban', label: 'IBAN', confidence: 85 });
-    }
-    
-    // IP Address detection
-    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
-    if (ipv4Regex.test(cleanInput) || ipv6Regex.test(cleanInput)) {
-        types.push({ type: 'ip', label: 'IP Adresi', confidence: 95 });
-    }
-    
-    // Name detection (Turkish characters)
-    if (/^[a-zA-ZçğıöşüÇĞIİÖŞÜ\s]{2,}$/.test(input) && input.includes(' ')) {
-        const parts = input.trim().split(/\s+/);
-        if (parts.length >= 2) {
-            types.push({ type: 'adsoyad', label: 'Ad Soyad', confidence: 70 });
-        }
-    }
-    
-    // Email detection
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input)) {
-        types.push({ type: 'email', label: 'E-posta', confidence: 95 });
-    }
-    
-    // Phone number detection (various formats)
-    if (/^(\+90|0)?[0-9\s\-\(\)]{10,}$/.test(input)) {
-        types.push({ type: 'phone', label: 'Telefon', confidence: 60 });
-    }
-    
-    return types.sort((a, b) => b.confidence - a.confidence);
-}
-
-function displayDetectedTypes(types) {
-    const container = document.getElementById('detectedTypes');
-    
-    if (types.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-    
-    container.innerHTML = types.map(type => 
-        `<div class="detected-type">${type.label} (%${type.confidence})</div>`
-    ).join('');
-}
-
-function showSearchSuggestions(input, detectedTypes) {
-    const container = document.getElementById('searchSuggestions');
-    
-    if (detectedTypes.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-    
-    const suggestions = [];
-    
-    detectedTypes.forEach(type => {
-        switch (type.type) {
-            case 'tc':
-                suggestions.push(`TC Kimlik sorgusu: ${input}`);
-                suggestions.push(`Adres sorgusu: ${input}`);
-                suggestions.push(`İşyeri sorgusu: ${input}`);
-                suggestions.push(`Sulale sorgusu: ${input}`);
-                suggestions.push(`TC → GSM sorgusu: ${input}`);
-                break;
-            case 'gsm':
-                suggestions.push(`GSM → TC sorgusu: ${input}`);
-                break;
-            case 'iban':
-                suggestions.push(`IBAN doğrulama: ${input}`);
-                break;
-            case 'ip':
-                suggestions.push(`IP analizi: ${input}`);
-                break;
-            case 'adsoyad':
-                const parts = input.trim().split(/\s+/);
-                if (parts.length >= 2) {
-                    suggestions.push(`Ad Soyad sorgusu: ${parts[0]} ${parts[1]}`);
-                }
-                break;
-        }
-    });
-    
-    if (suggestions.length > 0) {
-        container.innerHTML = suggestions.slice(0, 5).map(suggestion => 
-            `<div class="suggestion-item" onclick="selectSuggestion('${suggestion}')">${suggestion}</div>`
-        ).join('');
-        container.style.display = 'block';
-    } else {
-        container.style.display = 'none';
-    }
-}
-
-function selectSuggestion(suggestion) {
-    document.getElementById('superSearchInput').value = suggestion.split(': ')[1] || suggestion;
-    document.getElementById('searchSuggestions').style.display = 'none';
-    handleSuperSearchInput();
-}
-
-async function performSuperSearch() {
-    const input = document.getElementById('superSearchInput').value.trim();
-    const autoDetect = document.getElementById('autoDetect').checked;
-    const multiSearch = document.getElementById('multiSearch').checked;
-    const deepSearch = document.getElementById('deepSearch').checked;
-    
-    if (!input) {
-        showToast('Arama terimi girin!', 'error');
-        return;
-    }
-    
-    const detectedTypes = detectInputType(input);
-    
-    if (detectedTypes.length === 0) {
-        showToast('Girilen veri türü algılanamadı!', 'error');
-        return;
-    }
-    
-    showSuperSearchLoading();
-    
-    const results = {};
-    const searchPromises = [];
-    
-    // Determine which searches to perform
-    const searchTypes = multiSearch ? detectedTypes : [detectedTypes[0]];
-    
-    for (const typeInfo of searchTypes) {
-        const { type } = typeInfo;
-        
-        switch (type) {
-            case 'tc':
-                if (multiSearch || deepSearch) {
-                    searchPromises.push(performTCSearch(input, results));
-                    searchPromises.push(performAdresSearch(input, results));
-                    searchPromises.push(performIsyeriSearch(input, results));
-                    searchPromises.push(performSulaleSearch(input, results));
-                    searchPromises.push(performTcGsmSearch(input, results));
-                } else {
-                    searchPromises.push(performTCSearch(input, results));
-                }
-                break;
-            case 'gsm':
-                searchPromises.push(performGsmTcSearch(input, results));
-                break;
-            case 'iban':
-                searchPromises.push(performIBANSearch(input, results));
-                break;
-            case 'ip':
-                searchPromises.push(performIPSearch(input, results));
-                break;
-            case 'adsoyad':
-                searchPromises.push(performAdSoyadSearch(input, results));
-                break;
-        }
-    }
-    
-    // Wait for all searches to complete
-    await Promise.allSettled(searchPromises);
-    
-    displaySuperSearchResults(results, input);
-}
-
-async function performTCSearch(tc, results) {
-    try {
-        results.tc = { status: 'loading', type: 'TC Kimlik Sorgu' };
-        const data = await makeApiRequest('tc', { tc });
-        results.tc = { status: 'success', type: 'TC Kimlik Sorgu', data };
-    } catch (error) {
-        results.tc = { status: 'error', type: 'TC Kimlik Sorgu', error: error.message };
-    }
-}
-
-async function performAdresSearch(tc, results) {
-    try {
-        results.adres = { status: 'loading', type: 'Adres Sorgu' };
-        const data = await makeApiRequest('adres', { tc });
-        results.adres = { status: 'success', type: 'Adres Sorgu', data };
-    } catch (error) {
-        results.adres = { status: 'error', type: 'Adres Sorgu', error: error.message };
-    }
-}
-
-async function performIsyeriSearch(tc, results) {
-    try {
-        results.isyeri = { status: 'loading', type: 'İşyeri Sorgu' };
-        const data = await makeApiRequest('isyeri', { tc });
-        results.isyeri = { status: 'success', type: 'İşyeri Sorgu', data };
-    } catch (error) {
-        results.isyeri = { status: 'error', type: 'İşyeri Sorgu', error: error.message };
-    }
-}
-
-async function performSulaleSearch(tc, results) {
-    try {
-        results.sulale = { status: 'loading', type: 'Sulale Sorgu' };
-        const data = await makeApiRequest('sulale', { tc });
-        results.sulale = { status: 'success', type: 'Sulale Sorgu', data };
-    } catch (error) {
-        results.sulale = { status: 'error', type: 'Sulale Sorgu', error: error.message };
-    }
-}
-
-async function performTcGsmSearch(tc, results) {
-    try {
-        results.tcgsm = { status: 'loading', type: 'TC → GSM Sorgu' };
-        const data = await makeApiRequest('tcgsm', { tc });
-        results.tcgsm = { status: 'success', type: 'TC → GSM Sorgu', data };
-    } catch (error) {
-        results.tcgsm = { status: 'error', type: 'TC → GSM Sorgu', error: error.message };
-    }
-}
-
-async function performGsmTcSearch(gsm, results) {
-    try {
-        results.gsmtc = { status: 'loading', type: 'GSM → TC Sorgu' };
-        const data = await makeApiRequest('gsmtc', { gsm });
-        results.gsmtc = { status: 'success', type: 'GSM → TC Sorgu', data };
-    } catch (error) {
-        results.gsmtc = { status: 'error', type: 'GSM → TC Sorgu', error: error.message };
-    }
-}
-
-async function performIBANSearch(iban, results) {
-    try {
-        results.iban = { status: 'loading', type: 'IBAN Doğrulama' };
-        const data = await makeApiRequest('iban', { iban });
-        results.iban = { status: 'success', type: 'IBAN Doğrulama', data };
-    } catch (error) {
-        results.iban = { status: 'error', type: 'IBAN Doğrulama', error: error.message };
-    }
-}
-
-async function performIPSearch(ip, results) {
-    try {
-        results.ip = { status: 'loading', type: 'IP Analizi' };
-        const data = await makeApiRequest('iplookup', { ip });
-        results.ip = { status: 'success', type: 'IP Analizi', data };
-    } catch (error) {
-        results.ip = { status: 'error', type: 'IP Analizi', error: error.message };
-    }
-}
-
-async function performAdSoyadSearch(input, results) {
-    try {
-        const parts = input.trim().split(/\s+/);
-        if (parts.length >= 2) {
-            results.adsoyad = { status: 'loading', type: 'Ad Soyad Sorgu' };
-            const data = await makeApiRequest('adsoyad', { adi: parts[0], soyadi: parts[1] });
-            results.adsoyad = { status: 'success', type: 'Ad Soyad Sorgu', data };
-        }
-    } catch (error) {
-        results.adsoyad = { status: 'error', type: 'Ad Soyad Sorgu', error: error.message };
-    }
-}
-
-function showSuperSearchLoading() {
-    const container = document.getElementById('supersearchResults');
-    container.innerHTML = `
-        <div class="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Super Search yapılıyor...</div>
-        </div>
-    `;
-}
-
-function displaySuperSearchResults(results, searchTerm) {
-    const container = document.getElementById('supersearchResults');
-    
-    if (Object.keys(results).length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #999;">
-                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
-                <h3>Sonuç Bulunamadı</h3>
-                <p>Arama terimi için sonuç bulunamadı.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="super-results-header">
-            <h3><i class="fas fa-search-plus"></i> Super Search Sonuçları: "${searchTerm}"</h3>
-            <div class="results-summary">
-                ${Object.keys(results).length} farklı sorgu türü çalıştırıldı
-            </div>
-        </div>
-        <div class="super-results-container">
-    `;
-    
-    Object.entries(results).forEach(([key, result]) => {
-        html += `
-            <div class="result-section">
-                <h4>
-                    <i class="fas fa-${getIconForType(key)}"></i>
-                    ${result.type}
-                    <span class="result-status status-${result.status}">
-                        ${result.status === 'success' ? 'Başarılı' : result.status === 'error' ? 'Hata' : 'Yükleniyor'}
-                    </span>
-                </h4>
-                <div class="result-data">
-                    ${formatResultData(result)}
-                </div>
-            </div>
-        `;
-    });
-    
-    html += '</div>';
-    container.innerHTML = html;
-    
-    // Add action buttons
-    addActionButtons(container, results, 'Super Search');
-}
-
-function getIconForType(type) {
-    const icons = {
-        'tc': 'id-card',
-        'adres': 'map-marker-alt',
-        'isyeri': 'building',
-        'sulale': 'sitemap',
-        'tcgsm': 'mobile-alt',
-        'gsmtc': 'phone',
-        'iban': 'university',
-        'ip': 'globe',
-        'adsoyad': 'users'
-    };
-    return icons[type] || 'search';
-}
-
-function formatResultData(result) {
-    if (result.status === 'error') {
-        return `<div class="error-message">${result.error}</div>`;
-    }
-    
-    if (result.status === 'loading') {
-        return '<div class="loading-text">Yükleniyor...</div>';
-    }
-    
-    if (!result.data) {
-        return '<div class="no-data">Veri bulunamadı</div>';
-    }
-    
-    // Handle different data formats
-    let data = result.data;
-    if (data.success && data.data && Array.isArray(data.data)) {
-        data = data.data;
-    } else if (!Array.isArray(data)) {
-        data = [data];
-    }
-    
-    if (data.length === 0) {
-        return '<div class="no-data">Sonuç bulunamadı</div>';
-    }
-    
-    // Show first few results
-    const displayData = data.slice(0, 3);
-    let html = '';
-    
-    displayData.forEach((item, index) => {
-        html += `<div class="data-record">`;
-        Object.entries(item).forEach(([key, value]) => {
-            if (key !== '_warning' && key !== '_apiStatus' && key !== '_timestamp' && value) {
-                html += `
-                    <div class="data-item">
-                        <span class="data-label">${key}:</span>
-                        <span class="data-value">${value}</span>
-                    </div>
-                `;
-            }
-        });
-        html += `</div>`;
-        if (index < displayData.length - 1) {
-            html += '<hr style="border-color: #444; margin: 10px 0;">';
-        }
-    });
-    
-    if (data.length > 3) {
-        html += `<div class="more-results">... ve ${data.length - 3} sonuç daha</div>`;
-    }
-    
-    return html;
-}
-// Global map variable
-let ipMap = null;
-let currentMarker = null;
-
-// Enhanced IP Query with Map
-async function queryEnhancedIPWithMap() {
-    const ip = document.getElementById('ipInput').value.trim();
-    const showMap = document.getElementById('showMap').checked;
-    
-    if (!ip) {
-        showToast('IP adresi girin!', 'error');
-        return;
-    }
-    
-    // Enhanced IP validation (IPv4 and IPv6)
-    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
-    
-    if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
-        showToast('Geçerli bir IP adresi girin! (IPv4 veya IPv6)', 'error');
-        return;
-    }
-    
-    showEnhancedLoading('iplookupResults', 'IP Analizi');
-    
-    if (showMap) {
-        showMapContainer();
-        initializeMap();
-    }
-    
-    const data = await makeApiRequest('iplookup', { ip });
-    if (data) {
-        displayEnhancedIPResults('iplookupResults', data);
-        
-        if (showMap && data.data && data.data.location) {
-            updateMapWithLocation(data.data.location, ip);
-        }
-        
-        showToast('Gelişmiş IP analizi tamamlandı!', 'success');
-    }
-}
-
-// Show map container with animation
-function showMapContainer() {
-    const mapContainer = document.getElementById('ipMapContainer');
-    mapContainer.classList.remove('hidden');
-    
-    // Trigger animation
-    setTimeout(() => {
-        mapContainer.style.animation = 'slideInUp 0.8s ease-out';
-    }, 100);
-}
-
-// Initialize Leaflet map
-function initializeMap() {
-    const mapElement = document.getElementById('ipMap');
-    
-    if (ipMap) {
-        ipMap.remove();
-    }
-    
-    // Show loading state
-    mapElement.innerHTML = `
-        <div class="map-loading">
-            <div class="map-loading-spinner"></div>
-            <div class="map-loading-text">Harita yükleniyor...</div>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        ipMap = L.map('ipMap', {
-            zoomControl: true,
-            scrollWheelZoom: true,
-            doubleClickZoom: true,
-            touchZoom: true
-        }).setView([39.9334, 32.8597], 6); // Default to Turkey center
-        
-        // Add dark theme tile layer
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © CARTO',
-            subdomains: 'abcd',
-            maxZoom: 19
-        }).addTo(ipMap);
-        
-        // Add custom controls
-        addMapControls();
-        
-    }, 500);
-}
-
-// Update map with IP location
-function updateMapWithLocation(location, ip) {
-    if (!ipMap || !location.latitude || !location.longitude) return;
-    
-    const lat = parseFloat(location.latitude);
-    const lng = parseFloat(location.longitude);
-    
-    // Remove existing marker
-    if (currentMarker) {
-        ipMap.removeLayer(currentMarker);
-    }
-    
-    // Create custom animated marker
-    const customIcon = L.divIcon({
-        className: 'custom-marker',
-        html: `
-            <div class="marker-pin">
-                <div class="marker-pulse"></div>
-                <i class="fas fa-map-marker-alt"></i>
-            </div>
-        `,
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
-    });
-    
-    // Add marker with popup
-    currentMarker = L.marker([lat, lng], { icon: customIcon })
-        .addTo(ipMap)
-        .bindPopup(`
-            <div class="map-popup">
-                <h4><i class="fas fa-globe"></i> IP Konum Bilgisi</h4>
-                <div class="popup-content">
-                    <div class="popup-item">
-                        <strong>IP Adresi:</strong> ${ip}
-                    </div>
-                    <div class="popup-item">
-                        <strong>Şehir:</strong> ${location.city || 'Bilinmiyor'}
-                    </div>
-                    <div class="popup-item">
-                        <strong>Ülke:</strong> ${location.country || 'Bilinmiyor'}
-                    </div>
-                    <div class="popup-item">
-                        <strong>Koordinatlar:</strong> ${lat.toFixed(4)}, ${lng.toFixed(4)}
-                    </div>
-                    <div class="popup-item">
-                        <strong>ISP:</strong> ${location.isp || 'Bilinmiyor'}
-                    </div>
-                </div>
-            </div>
-        `, {
-            maxWidth: 300,
-            className: 'custom-popup'
-        });
-    
-    // Animate to location
-    ipMap.flyTo([lat, lng], 10, {
-        animate: true,
-        duration: 2
-    });
-    
-    // Update location info
-    updateLocationInfo(location, lat, lng);
-    
-    // Add accuracy circle if available
-    if (location.accuracy) {
-        const accuracyRadius = location.accuracy * 1000; // Convert to meters
-        L.circle([lat, lng], {
-            color: '#4a9eff',
-            fillColor: '#4a9eff',
-            fillOpacity: 0.1,
-            radius: accuracyRadius
-        }).addTo(ipMap);
-    }
-}
-
-// Update location information display
-function updateLocationInfo(location, lat, lng) {
-    const locationText = document.getElementById('mapLocationText');
-    const accuracyText = document.getElementById('mapAccuracyText');
-    
-    if (locationText) {
-        locationText.innerHTML = `
-            <strong>${location.city || 'Bilinmiyor'}, ${location.country || 'Bilinmiyor'}</strong>
-            <br><small>Koordinatlar: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
-        `;
-    }
-    
-    if (accuracyText) {
-        const accuracy = location.accuracy || 'Bilinmiyor';
-        accuracyText.innerHTML = `Doğruluk: ${accuracy === 'Bilinmiyor' ? accuracy : accuracy + ' km'}`;
-    }
-}
-
-// Add custom map controls
-function addMapControls() {
-    // Add custom CSS for marker
-    const markerStyle = document.createElement('style');
-    markerStyle.textContent = `
-        .custom-marker {
-            background: none;
-            border: none;
-        }
-        
-        .marker-pin {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            color: #4a9eff;
-            font-size: 24px;
-            animation: bounce 2s infinite;
-        }
-        
-        .marker-pulse {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 2px solid #4a9eff;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-            opacity: 0.6;
-        }
-        
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-            40% {
-                transform: translateY(-10px);
-            }
-            60% {
-                transform: translateY(-5px);
-            }
-        }
-        
-        @keyframes pulse {
-            0% {
-                transform: scale(0.8);
-                opacity: 0.6;
-            }
-            50% {
-                transform: scale(1.2);
-                opacity: 0.3;
-            }
-            100% {
-                transform: scale(0.8);
-                opacity: 0.6;
-            }
-        }
-        
-        .map-popup h4 {
-            color: #4a9eff;
-            margin: 0 0 10px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .popup-content {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .popup-item {
-            font-size: 0.9rem;
-            color: #ccc;
-        }
-        
-        .popup-item strong {
-            color: #4a9eff;
-        }
-    `;
-    document.head.appendChild(markerStyle);
-}
-
-// Toggle map fullscreen
-function toggleMapView() {
-    const mapContainer = document.getElementById('ipMapContainer');
-    
-    if (mapContainer.classList.contains('map-fullscreen')) {
-        mapContainer.classList.remove('map-fullscreen');
-        document.body.style.overflow = 'auto';
-    } else {
-        mapContainer.classList.add('map-fullscreen');
-        document.body.style.overflow = 'hidden';
-    }
-    
-    // Resize map after transition
-    setTimeout(() => {
-        if (ipMap) {
-            ipMap.invalidateSize();
-        }
-    }, 500);
-}
-
-// Center map on marker
-function centerMap() {
-    if (ipMap && currentMarker) {
-        const markerLatLng = currentMarker.getLatLng();
-        ipMap.flyTo(markerLatLng, 12, {
-            animate: true,
-            duration: 1.5
-        });
-    }
-}
-
-// IBAN to Account Holder Query
-async function queryIBANHesapSahibi() {
-    const iban = document.getElementById('ibanHesapInput').value.trim();
-    
-    if (!iban) {
-        showToast('IBAN numarası girin!', 'error');
-        return;
-    }
-    
-    // Clean IBAN (remove spaces)
-    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
-    
-    // Enhanced IBAN format validation
-    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(cleanIban)) {
-        showToast('Geçerli bir IBAN numarası girin! (örn: TR330006100519786457841326)', 'error');
-        return;
-    }
-    
-    if (cleanIban.length < 15 || cleanIban.length > 34) {
-        showToast('IBAN numarası 15-34 karakter arasında olmalıdır!', 'error');
-        return;
-    }
-    
-    showEnhancedLoading('ibanhesapResults', 'IBAN Hesap Sahibi Analizi');
-    
-    const data = await makeApiRequest('ibanhesap', { iban: cleanIban });
-    if (data) {
-        displayIBANHesapSahibiResults('ibanhesapResults', data);
-        showToast('IBAN hesap sahibi sorgusu tamamlandı!', 'success');
-    }
-}
-
-// Display IBAN Account Holder Results
-function displayIBANHesapSahibiResults(containerId, data) {
-    const container = document.getElementById(containerId);
-    
-    if (!data || data.error) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 60px; color: #888;">
-                <div style="font-size: 4rem; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle" style="opacity: 0.3;"></i></div>
-                <h3>IBAN Hesap Sahibi Sorgusu Başarısız</h3>
-                <p>${data?.details || 'IBAN hesap sahibi bilgisi bulunamadı.'}</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="enhanced-sources-info">
-            <h5><i class="fas fa-user-check"></i> IBAN Hesap Sahibi Sorgu Sonucu</h5>
-            <p>Sorgu Zamanı: ${new Date(data.timestamp).toLocaleString('tr-TR')}</p>
-        </div>
-    `;
-    
-    // Account Holder Information
-    if (data.accountHolder) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-user"></i> Hesap Sahibi Bilgileri</h4>
-                <div class="account-holder-card">
-                    <div class="holder-info">
-                        <div class="holder-name">
-                            <i class="fas fa-user-circle"></i>
-                            <span>${data.accountHolder.name || 'Bilgi Bulunamadı'}</span>
-                        </div>
-                        <div class="holder-details">
-                            <div class="detail-row">
-                                <span class="detail-label">Hesap Türü:</span>
-                                <span class="detail-value">${data.accountHolder.accountType || 'Bilinmiyor'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Hesap Durumu:</span>
-                                <span class="detail-value status-${data.accountHolder.status || 'unknown'}">${data.accountHolder.status || 'Bilinmiyor'}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Açılış Tarihi:</span>
-                                <span class="detail-value">${data.accountHolder.openDate || 'Bilinmiyor'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // IBAN Details
-    html += `
-        <div class="enhanced-result-section">
-            <h4><i class="fas fa-university"></i> IBAN Detayları</h4>
-            <div class="iban-formatted">${data.formatted || data.iban}</div>
-            <div class="iban-result-grid">
-                ${createEnhancedIBANResultItem('IBAN Numarası', data.iban)}
-                ${createEnhancedIBANResultItem('Ülke', `${data.country} (${data.countryCode})`)}
-                ${createEnhancedIBANResultItem('Banka Kodu', data.bankCode)}
-                ${createEnhancedIBANResultItem('Hesap Numarası', data.accountNumber)}
-            </div>
-        </div>
-    `;
-    
-    // Bank Information
-    if (data.bankInfo) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-building"></i> Banka Bilgileri</h4>
-                <div class="bank-info-card">
-                    <h5><i class="fas fa-university"></i> ${data.bankInfo.bankName || 'Banka Bilgisi'}</h5>
-                    <div class="iban-result-grid">
-                        ${createEnhancedIBANResultItem('Banka Adı', data.bankInfo.bankName)}
-                        ${createEnhancedIBANResultItem('BIC/SWIFT', data.bankInfo.bic)}
-                        ${createEnhancedIBANResultItem('Şube', data.bankInfo.branch)}
-                        ${createEnhancedIBANResultItem('Şehir', data.bankInfo.city)}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    // Security Analysis
-    if (data.security) {
-        html += `
-            <div class="enhanced-result-section">
-                <h4><i class="fas fa-shield-alt"></i> Güvenlik Analizi</h4>
-                <div class="security-analysis">
-                    ${createSecurityItem('Hesap Doğrulaması', { detected: data.security.verified, confidence: data.security.confidence })}
-                    ${createSecurityItem('Risk Seviyesi', { detected: data.security.riskLevel === 'high', confidence: 100 })}
-                    ${createSecurityItem('Sahiplik Doğrulaması', { detected: data.security.ownershipVerified, confidence: data.security.ownershipConfidence })}
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    
-    // Add action buttons
-    addActionButtons(container, data, 'IBAN Account Holder');
-}
-
-// Set example IBAN for account holder query
-function setExampleIBANHesap(iban) {
-    document.getElementById('ibanHesapInput').value = iban;
-}
-
-// Format IBAN input for account holder query
-document.addEventListener('DOMContentLoaded', function() {
-    const ibanHesapInput = document.getElementById('ibanHesapInput');
-    if (ibanHesapInput) {
-        ibanHesapInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '').toUpperCase();
-            let formatted = value.replace(/(.{4})/g, '$1 ').trim();
-            if (formatted.length <= 34 + 8) { // 34 chars + 8 spaces max
-                e.target.value = formatted;
-            }
-        });
-        
-        ibanHesapInput.addEventListener('paste', function(e) {
-            setTimeout(() => {
-                let value = e.target.value.replace(/\s/g, '').toUpperCase();
-                let formatted = value.replace(/(.{4})/g, '$1 ').trim();
-                e.target.value = formatted;
-            }, 10);
-        });
-    }
-});
-// Super Search from result data
-async function performSuperSearchFromResult(data, queryType) {
-    let searchTerms = [];
-    
-    // Extract search terms from result data
-    if (Array.isArray(data)) {
-        data.forEach(item => {
-            if (item.TC) searchTerms.push(item.TC);
-            if (item.GSM) searchTerms.push(item.GSM);
-            if (item.ADI && item.SOYADI) searchTerms.push(`${item.ADI} ${item.SOYADI}`);
-        });
-    } else if (data && typeof data === 'object') {
-        if (data.TC) searchTerms.push(data.TC);
-        if (data.GSM) searchTerms.push(data.GSM);
-        if (data.iban) searchTerms.push(data.iban);
-        if (data.accountHolder && data.accountHolder.name) {
-            searchTerms.push(data.accountHolder.name);
-        }
-        if (data.ADI && data.SOYADI) searchTerms.push(`${data.ADI} ${data.SOYADI}`);
-    }
-    
-    if (searchTerms.length === 0) {
-        showToast('Super Search için uygun veri bulunamadı!', 'error');
-        return;
-    }
-    
-    // Switch to Super Search page
-    showPage('supersearch');
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    document.querySelector('[data-page="supersearch"]').classList.add('active');
-    
-    // Perform comprehensive search for each term
-    const allResults = {};
-    
-    showToast(`${searchTerms.length} veri için kapsamlı Super Search başlatılıyor...`, 'success');
-    
-    for (const term of searchTerms) {
-        await performComprehensiveSearch(term, allResults);
-    }
-    
-    // Display unified results
-    displayUnifiedSuperSearchResults(allResults, searchTerms);
-}
-
-// Comprehensive search for a single term
-async function performComprehensiveSearch(searchTerm, allResults) {
-    const detectedTypes = detectInputType(searchTerm);
-    const results = {};
-    const searchPromises = [];
-    
-    // Determine search types based on detected type
-    for (const typeInfo of detectedTypes) {
-        const { type } = typeInfo;
-        
-        switch (type) {
-            case 'tc':
-                searchPromises.push(performTCSearch(searchTerm, results));
-                searchPromises.push(performAdresSearch(searchTerm, results));
-                searchPromises.push(performIsyeriSearch(searchTerm, results));
-                searchPromises.push(performSulaleSearch(searchTerm, results));
-                searchPromises.push(performTcGsmSearch(searchTerm, results));
-                break;
-            case 'gsm':
-                searchPromises.push(performGsmTcSearch(searchTerm, results));
-                break;
-            case 'iban':
-                searchPromises.push(performIBANSearch(searchTerm, results));
-                searchPromises.push(performIBANHesapSearch(searchTerm, results));
-                break;
-            case 'ip':
-                searchPromises.push(performIPSearch(searchTerm, results));
-                break;
-            case 'adsoyad':
-                searchPromises.push(performAdSoyadSearch(searchTerm, results));
-                break;
-        }
-    }
-    
-    // Wait for all searches to complete
-    await Promise.allSettled(searchPromises);
-    
-    // Store results for this search term
-    allResults[searchTerm] = results;
-}
-
-// IBAN Account Holder search for Super Search
-async function performIBANHesapSearch(iban, results) {
-    try {
-        results.ibanhesap = { status: 'loading', type: 'IBAN Hesap Sahibi' };
-        const data = await makeApiRequest('ibanhesap', { iban });
-        results.ibanhesap = { status: 'success', type: 'IBAN Hesap Sahibi', data };
-    } catch (error) {
-        results.ibanhesap = { status: 'error', type: 'IBAN Hesap Sahibi', error: error.message };
-    }
-}
-
-// Display unified Super Search results in single table format
-function displayUnifiedSuperSearchResults(allResults, searchTerms) {
-    const container = document.getElementById('supersearchResults');
-    
-    if (Object.keys(allResults).length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #999;">
-                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
-                <h3>Sonuç Bulunamadı</h3>
-                <p>Super Search için sonuç bulunamadı.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // Collect all successful results into a unified table
-    const unifiedData = [];
-    
-    Object.entries(allResults).forEach(([searchTerm, results]) => {
-        Object.entries(results).forEach(([queryType, result]) => {
-            if (result.status === 'success' && result.data) {
-                let data = result.data;
-                
-                // Handle different data formats
-                if (data.success && data.data && Array.isArray(data.data)) {
-                    data = data.data;
-                } else if (!Array.isArray(data)) {
-                    data = [data];
-                }
-                
-                // Add each record to unified data
-                data.forEach(record => {
-                    const unifiedRecord = {
-                        'ARAMA_TERIMI': searchTerm,
-                        'SORGU_TURU': result.type,
-                        ...record
-                    };
-                    unifiedData.push(unifiedRecord);
-                });
-            }
-        });
-    });
-    
-    if (unifiedData.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #999;">
-                <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.3;"></i>
-                <h3>Veri Bulunamadı</h3>
-                <p>Super Search sonuçlarında veri bulunamadı.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    // Display unified results as single table
-    const headerInfo = `
-        <div class="results-header">
-            <h4><i class="fas fa-search-plus"></i> Super Search Birleşik Sonuçlar</h4>
-            <div class="results-count">
-                <span class="count-badge">
-                    <i class="fas fa-database"></i>
-                    ${unifiedData.length} toplam kayıt - ${searchTerms.length} arama terimi
-                </span>
-            </div>
-        </div>
-    `;
-    
-    displayEnhancedTable(container, unifiedData, 'Super Search Unified Results', headerInfo);
-    
-    // Add action buttons
-    addActionButtons(container, unifiedData, 'Super Search Unified');
-    
-    showToast(`Super Search tamamlandı! ${unifiedData.length} kayıt bulundu.`, 'success');
-}
-// Clear results function
-function clearResults(containerId) {
-    const container = document.getElementById(containerId);
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #888;">
-                <div style="font-size: 3rem; margin-bottom: 15px;"><i class="fas fa-search" style="opacity: 0.3;"></i></div>
-                <h3>Sonuçlar Temizlendi</h3>
-                <p>Yeni bir sorgu yapmak için yukarıdaki formu kullanın.</p>
-            </div>
-        `;
-    }
-}

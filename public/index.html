@@ -43,19 +43,16 @@
                 <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
             </div>
             <ul class="nav-menu">
-                <li><a href="#" data-page="home" class="nav-link active" style="--i:0"><i class="fas fa-home"></i> Anasayfa</a></li>
-                <li><a href="#" data-page="supersearch" class="nav-link" style="--i:1"><i class="fas fa-search-plus"></i> Super Search</a></li>
-                <li><a href="#" data-page="adsoyad" class="nav-link" style="--i:2"><i class="fas fa-users"></i> Ad Soyad Sorgu</a></li>
-                <li><a href="#" data-page="tc" class="nav-link" style="--i:3"><i class="fas fa-id-card"></i> TC Sorgu</a></li>
-                <li><a href="#" data-page="adres" class="nav-link" style="--i:4"><i class="fas fa-map-marker-alt"></i> Adres Sorgu</a></li>
-                <li><a href="#" data-page="isyeri" class="nav-link" style="--i:5"><i class="fas fa-building"></i> İşyeri Sorgu</a></li>
-                <li><a href="#" data-page="sulale" class="nav-link" style="--i:6"><i class="fas fa-sitemap"></i> Sulale Sorgu</a></li>
-                <li><a href="#" data-page="tcgsm" class="nav-link" style="--i:7"><i class="fas fa-mobile-alt"></i> TC → GSM</a></li>
-                <li><a href="#" data-page="gsmtc" class="nav-link" style="--i:8"><i class="fas fa-phone"></i> GSM → TC</a></li>
-                <li><a href="#" data-page="iplookup" class="nav-link" style="--i:9"><i class="fas fa-globe"></i> IP Sorgu & Harita</a></li>
-                <li><a href="#" data-page="iban" class="nav-link" style="--i:10"><i class="fas fa-university"></i> IBAN Sorgu</a></li>
-                <li><a href="#" data-page="ibanhesap" class="nav-link" style="--i:11"><i class="fas fa-user-check"></i> IBAN → Hesap Sahibi</a></li>
-                <li id="adminMenuItem" class="hidden"><a href="#" data-page="admin" class="nav-link" style="--i:12"><i class="fas fa-cog"></i> Admin Panel</a></li>
+                <li><a href="#" data-page="home" class="nav-link active"><i class="fas fa-home"></i> Anasayfa</a></li>
+                <li><a href="#" data-page="adsoyad" class="nav-link"><i class="fas fa-users"></i> Ad Soyad Sorgu</a></li>
+                <li><a href="#" data-page="tc" class="nav-link"><i class="fas fa-id-card"></i> TC Sorgu</a></li>
+                <li><a href="#" data-page="adres" class="nav-link"><i class="fas fa-map-marker-alt"></i> Adres Sorgu</a></li>
+                <li><a href="#" data-page="isyeri" class="nav-link"><i class="fas fa-building"></i> İşyeri Sorgu</a></li>
+                <li><a href="#" data-page="sulale" class="nav-link"><i class="fas fa-sitemap"></i> Sulale Sorgu</a></li>
+                <li><a href="#" data-page="tcgsm" class="nav-link"><i class="fas fa-mobile-alt"></i> TC → GSM</a></li>
+                <li><a href="#" data-page="gsmtc" class="nav-link"><i class="fas fa-phone"></i> GSM → TC</a></li>
+                <li><a href="#" data-page="iplookup" class="nav-link"><i class="fas fa-globe"></i> IP Sorgu</a></li>
+                <li id="adminMenuItem" class="hidden"><a href="#" data-page="admin" class="nav-link"><i class="fas fa-cog"></i> Admin Panel</a></li>
             </ul>
         </nav>
 
@@ -116,41 +113,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Super Search Page -->
-            <div id="supersearchPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Super Search</h1>
-                    <p class="page-subtitle">Akıllı arama sistemi - Tek kutuda tüm sorgular</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="super-search-container">
-                        <div class="search-input-wrapper">
-                            <input type="text" id="superSearchInput" placeholder="TC, GSM, IP, IBAN, Ad Soyad veya herhangi bir veri girin..." maxlength="50">
-                            <div class="search-suggestions" id="searchSuggestions"></div>
-                        </div>
-                        <div class="search-options">
-                            <label class="search-option">
-                                <input type="checkbox" id="autoDetect" checked>
-                                <span>Otomatik Algılama</span>
-                            </label>
-                            <label class="search-option">
-                                <input type="checkbox" id="multiSearch" checked>
-                                <span>Çoklu Arama</span>
-                            </label>
-                            <label class="search-option">
-                                <input type="checkbox" id="deepSearch">
-                                <span>Derin Arama</span>
-                            </label>
-                        </div>
-                        <div class="detected-types" id="detectedTypes"></div>
-                    </div>
-                    <button onclick="performSuperSearch()" class="query-btn super-search-btn">
-                        <i class="fas fa-search-plus"></i> Super Search Başlat
-                    </button>
-                </div>
-                <div id="supersearchResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Ad Soyad Sorgu Page -->
@@ -244,137 +206,26 @@
                 <div id="gsmtcResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
-            <!-- Enhanced IP Lookup Page with Interactive Map -->
+            <!-- IP Lookup Page -->
             <div id="iplookupPage" class="page">
                 <div class="page-header">
-                    <h1 class="page-title">Gelişmiş IP Adres Analizi & Harita</h1>
-                    <p class="page-subtitle">15+ API'den birleşik sonuç - Kapsamlı güvenlik ve konum analizi + İnteraktif Harita</p>
+                    <h1 class="page-title">IP Adres Sorgu</h1>
+                    <p class="page-subtitle">Kapsamlı IP analizi - 6 farklı API'den birleşik sonuç</p>
                 </div>
                 <div class="query-form" data-aos="fade-up">
                     <div class="ip-input-section">
-                        <input type="text" id="ipInput" placeholder="IP Adresi (IPv4 veya IPv6)" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$">
+                        <input type="text" id="ipInput" placeholder="IP Adresi (örn: 8.8.8.8)" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
                         <div class="ip-examples">
-                            <span>IPv4 Örnekleri:</span>
+                            <span>Örnekler:</span>
                             <button type="button" onclick="setExampleIP('8.8.8.8')" class="example-ip">8.8.8.8</button>
                             <button type="button" onclick="setExampleIP('1.1.1.1')" class="example-ip">1.1.1.1</button>
                             <button type="button" onclick="setExampleIP('208.67.222.222')" class="example-ip">208.67.222.222</button>
-                            <button type="button" onclick="setExampleIP('185.228.168.9')" class="example-ip">185.228.168.9</button>
-                        </div>
-                        <div class="ip-examples">
-                            <span>IPv6 Örnekleri:</span>
-                            <button type="button" onclick="setExampleIP('2001:4860:4860::8888')" class="example-ip ipv6">2001:4860:4860::8888</button>
-                            <button type="button" onclick="setExampleIP('2606:4700:4700::1111')" class="example-ip ipv6">2606:4700:4700::1111</button>
                             <button type="button" onclick="getMyIP()" class="example-ip my-ip">Benim IP'm</button>
                         </div>
-                        <div class="ip-analysis-options">
-                            <label><input type="checkbox" id="deepAnalysis" checked> Derin Güvenlik Analizi</label>
-                            <label><input type="checkbox" id="performanceAnalysis" checked> Performans Analizi</label>
-                            <label><input type="checkbox" id="reputationCheck" checked> Reputation Kontrolü</label>
-                            <label><input type="checkbox" id="showMap" checked> İnteraktif Harita Göster</label>
-                        </div>
                     </div>
-                    <button onclick="queryEnhancedIPWithMap()" class="query-btn enhanced"><i class="fas fa-search-plus"></i> Gelişmiş IP Analizi & Harita</button>
+                    <button onclick="queryIPLookup()" class="query-btn"><i class="fas fa-search"></i> IP Sorgula</button>
                 </div>
-                
-                <!-- Interactive Map Container -->
-                <div id="ipMapContainer" class="map-container hidden" data-aos="fade-up" data-aos-delay="200">
-                    <div class="map-header">
-                        <h3><i class="fas fa-map-marked-alt"></i> IP Konum Haritası</h3>
-                        <div class="map-controls">
-                            <button onclick="toggleMapView()" class="map-control-btn">
-                                <i class="fas fa-expand-arrows-alt"></i> Tam Ekran
-                            </button>
-                            <button onclick="centerMap()" class="map-control-btn">
-                                <i class="fas fa-crosshairs"></i> Merkeze Al
-                            </button>
-                        </div>
-                    </div>
-                    <div id="ipMap" class="interactive-map"></div>
-                    <div class="map-info">
-                        <div class="location-details">
-                            <div class="detail-item">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <span id="mapLocationText">Konum bilgisi yükleniyor...</span>
-                            </div>
-                            <div class="detail-item">
-                                <i class="fas fa-ruler-horizontal"></i>
-                                <span id="mapAccuracyText">Doğruluk: Hesaplanıyor...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="iplookupResults" class="results-container enhanced" data-aos="fade-up" data-aos-delay="400"></div>
-            </div>
-
-            <!-- IBAN to Account Holder Page -->
-            <div id="ibanhesapPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">IBAN → Hesap Sahibi Sorgu</h1>
-                    <p class="page-subtitle">IBAN numarasından hesap sahibi bilgilerini sorgulayın</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="iban-input-section">
-                        <input type="text" id="ibanHesapInput" placeholder="IBAN Numarası (örn: TR330006100519786457841326)" maxlength="40">
-                        <div class="iban-examples">
-                            <span>Türkiye Örnekleri:</span>
-                            <button type="button" onclick="setExampleIBANHesap('TR330006100519786457841326')" class="example-iban">TR33 0006 1005 1978 6457 8413 26</button>
-                            <button type="button" onclick="setExampleIBANHesap('TR640001200009300131000001')" class="example-iban">TR64 0001 2000 0930 0131 0000 01</button>
-                        </div>
-                        <div class="iban-examples">
-                            <span>Uluslararası Örnekler:</span>
-                            <button type="button" onclick="setExampleIBANHesap('DE89370400440532013000')" class="example-iban">DE89 3704 0044 0532 0130 00</button>
-                            <button type="button" onclick="setExampleIBANHesap('GB29NWBK60161331926819')" class="example-iban">GB29 NWBK 6016 1331 9268 19</button>
-                        </div>
-                        <div class="iban-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>IBAN numarasını boşluklu veya boşluksuz girebilirsiniz. Hesap sahibi bilgileri sorgulanacak.</span>
-                        </div>
-                        <div class="iban-analysis-options">
-                            <label><input type="checkbox" id="detailedSearch" checked> Detaylı Arama</label>
-                            <label><input type="checkbox" id="bankVerification" checked> Banka Doğrulama</label>
-                            <label><input type="checkbox" id="ownershipHistory" checked> Sahiplik Geçmişi</label>
-                        </div>
-                    </div>
-                    <button onclick="queryIBANHesapSahibi()" class="query-btn enhanced"><i class="fas fa-user-check"></i> Hesap Sahibi Sorgu</button>
-                </div>
-                <div id="ibanhesapResults" class="results-container enhanced" data-aos="fade-up" data-aos-delay="200"></div>
-            </div>
-
-            <!-- Enhanced IBAN Lookup Page -->
-            <div id="ibanPage" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Gelişmiş IBAN Analizi ve Doğrulama</h1>
-                    <p class="page-subtitle">Kapsamlı IBAN doğrulama, banka analizi ve güvenlik kontrolü</p>
-                </div>
-                <div class="query-form" data-aos="fade-up">
-                    <div class="iban-input-section">
-                        <input type="text" id="ibanInput" placeholder="IBAN Numarası (örn: TR330006100519786457841326)" maxlength="40">
-                        <div class="iban-examples">
-                            <span>Türkiye Örnekleri:</span>
-                            <button type="button" onclick="setExampleIBAN('TR330006100519786457841326')" class="example-iban">TR33 0006 1005 1978 6457 8413 26</button>
-                            <button type="button" onclick="setExampleIBAN('TR640001200009300131000001')" class="example-iban">TR64 0001 2000 0930 0131 0000 01</button>
-                        </div>
-                        <div class="iban-examples">
-                            <span>Uluslararası Örnekler:</span>
-                            <button type="button" onclick="setExampleIBAN('DE89370400440532013000')" class="example-iban">DE89 3704 0044 0532 0130 00</button>
-                            <button type="button" onclick="setExampleIBAN('GB29NWBK60161331926819')" class="example-iban">GB29 NWBK 6016 1331 9268 19</button>
-                            <button type="button" onclick="setExampleIBAN('FR1420041010050500013M02606')" class="example-iban">FR14 2004 1010 0505 0001 3M02 606</button>
-                        </div>
-                        <div class="iban-info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>IBAN numarasını boşluklu veya boşluksuz girebilirsiniz. Otomatik formatlama yapılır.</span>
-                        </div>
-                        <div class="iban-analysis-options">
-                            <label><input type="checkbox" id="securityAnalysis" checked> Güvenlik Analizi</label>
-                            <label><input type="checkbox" id="complianceCheck" checked> Uyumluluk Kontrolü</label>
-                            <label><input type="checkbox" id="bankVerification" checked> Banka Doğrulama</label>
-                            <label><input type="checkbox" id="riskAssessment" checked> Risk Değerlendirmesi</label>
-                        </div>
-                    </div>
-                    <button onclick="queryEnhancedIBAN()" class="query-btn enhanced"><i class="fas fa-university"></i> Gelişmiş IBAN Analizi</button>
-                </div>
-                <div id="ibanResults" class="results-container enhanced" data-aos="fade-up" data-aos-delay="200"></div>
+                <div id="iplookupResults" class="results-container" data-aos="fade-up" data-aos-delay="200"></div>
             </div>
 
             <!-- Admin Panel Page -->
@@ -417,10 +268,6 @@
     <!-- AOS Animation Library -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-
-    <!-- Leaflet Map Library -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script src="script.js"></script>
 </body>
